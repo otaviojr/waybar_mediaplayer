@@ -131,8 +131,10 @@ GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer* player) {
 void gtk_media_player_destroy(void* pointer) {
   printf("gtk_media_player_destroy entered\n");
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)pointer;
-  if(media_player->player != NULL)
+
+  if(media_player->player != NULL){
     g_object_unref(media_player->player);
+  }
 
   g_free(media_player);
   printf("gtk_media_player_destroy exited\n");

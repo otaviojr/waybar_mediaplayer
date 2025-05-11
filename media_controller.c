@@ -21,6 +21,7 @@
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
 #include "media_controller.h"
+#include "glib-object.h"
 #include "glib.h"
 #include "media_player.h"
 #include "playerctl-player-name.h"
@@ -150,6 +151,8 @@ gtk_media_controller_finalize(GObject * object)
     self->player_manager = NULL;
   }
 
+  g_object_unref(self->container);
+
   G_OBJECT_CLASS
       (gtk_media_controller_parent_class)->finalize(object);
 
@@ -160,12 +163,15 @@ static void gtk_media_controller_update(GtkMediaController* self) {
   printf("gtk_media_controller_update entered\n");
   
   if(self->media_players == NULL){
-    if(gtk_widget_is_visible(GTK_WIDGET(self->container)))
-      gtk_widget_hide(GTK_WIDGET(self->container));
+    if(gtk_widget_get_parent_window(GTK_WIDGET(self->container)) != NULL){
+      gtk_container_remove(GTK_CONTAINER(self), GTK_WIDGET(self->container));
+    }
     return;
   } else {
-    if(!gtk_widget_is_visible(GTK_WIDGET(self->container)))
+    if(gtk_widget_get_parent_window(GTK_WIDGET(self->container)) == NULL){
+      gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
       gtk_widget_show(GTK_WIDGET(self->container));
+    }
   }
 
   if(self->player_text != NULL){
@@ -239,6 +245,23 @@ static void gtk_media_controller_update(GtkMediaController* self) {
         } else {
           gtk_button_set_label(self->btn_play, (const gchar*)u8"\uF04B");
         }
+
+        GValue val = G_VALUE_INIT;
+        g_value_init(&val, G_TYPE_BOOLEAN);
+        g_object_get_property(G_OBJECT(media_player->player), "can-go-previous", &val);
+        if(g_value_get_boolean(&val) == FALSE)
+          gtk_widget_hide(GTK_WIDGET(self->btn_prev));
+        else
+          gtk_widget_show(GTK_WIDGET(self->btn_prev));
+        g_value_unset(&val);
+
+        g_object_get_property(G_OBJECT(media_player->player), "can-go-next", &val);
+        if(g_value_get_boolean(&val) == FALSE)
+          gtk_widget_hide(GTK_WIDGET(self->btn_next));
+        else
+          gtk_widget_show(GTK_WIDGET(self->btn_next));
+        g_value_unset(&val);
+
       }
     }
   }
@@ -276,9 +299,9 @@ static void gtk_media_controller_player_remove(GtkMediaController* self, Playerc
           self->current_player = NULL;
         }
       }
+      self->media_players = g_list_remove_link(self->media_players, item);
+      g_list_free_full(item, gtk_media_player_destroy);
     }
-    self->media_players = g_list_remove_link(self->media_players, item);
-    g_list_free_full(item, gtk_media_player_destroy);
   } else {
     if(self->current_player == player)
     self->current_player = NULL;
@@ -518,8 +541,9 @@ gtk_media_controller_new(){
   GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, NULL);
 
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
-  gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
+  //gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
+  g_object_ref(self->container);
 
   GtkEventBox* player_event = GTK_EVENT_BOX(gtk_event_box_new());
   gtk_container_add(GTK_CONTAINER(self->container), GTK_WIDGET(player_event));
