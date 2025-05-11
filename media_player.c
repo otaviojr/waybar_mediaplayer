@@ -108,8 +108,6 @@ GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer* player) {
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)g_malloc(sizeof(GtkMediaPlayer));
   GError* err = NULL;
 
-  g_object_ref(player);
-
   media_player->player = player;
   gchar* title = playerctl_player_get_title(player, &err);
   if(!err && title && strlen(title) == 0){

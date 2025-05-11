@@ -170,7 +170,7 @@ static void gtk_media_controller_update(GtkMediaController* self) {
   } else {
     if(gtk_widget_get_parent_window(GTK_WIDGET(self->container)) == NULL){
       gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
-      gtk_widget_show(GTK_WIDGET(self->container));
+      gtk_widget_show_all(GTK_WIDGET(self->container));
     }
   }
 
