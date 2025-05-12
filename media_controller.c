@@ -527,7 +527,7 @@ static void gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_dat
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_previous(self->current_player, &err);
-  playerctl_player_set_position(self->current_player, 0, &err);
+  playerctl_player_play(self->current_player, &err);
 }
 
 static void gtk_media_controller_on_play_click(GtkButton* btn, gpointer user_data) {
@@ -542,7 +542,7 @@ static void gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_dat
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_next(self->current_player, &err);
-  playerctl_player_set_position(self->current_player, 0, &err);
+  playerctl_player_play(self->current_player, &err);
 }
 
 static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer user_data){
