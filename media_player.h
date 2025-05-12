@@ -32,7 +32,7 @@ typedef struct _MediaPlayerCallbacks {
   void (*on_stop)(PlayerctlPlayer*, gpointer);
   void (*on_pause)(PlayerctlPlayer*, gpointer);
   void (*on_seeked)(PlayerctlPlayer*, gint64, gpointer);
-  void (*on_meta)(PlayerctlPlayer*, GVariant* metadata, gpointer);
+  void (*on_meta)(PlayerctlPlayer*, GVariant*, gpointer);
   void (*on_exit)(PlayerctlPlayer*, gpointer);
 } MediaPlayerCallbacks;
 
@@ -40,6 +40,7 @@ typedef struct _GtkMediaPlayer {
   PlayerctlPlayer* player;
   gboolean available;
   PlayerctlPlaybackStatus status;
+  guint64 length;
 } GtkMediaPlayer;
 
 PlayerctlPlayerManager* media_player_new(MediaPlayerManagerCallbacks*, gpointer);
@@ -49,3 +50,4 @@ void media_player_add_player_by_name(PlayerctlPlayerManager*, PlayerctlPlayerNam
 GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer*);
 void gtk_media_player_destroy(void*);
 int gtk_media_player_compare(const void*, const void*);
+guint64 gtk_media_player_get_length(PlayerctlPlayer*);

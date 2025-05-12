@@ -123,6 +123,9 @@ GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer* player) {
   media_player->status = playback_status;
   g_value_unset(&val);
 
+  guint64 length = gtk_media_player_get_length(player);
+  media_player->length = length;
+
   return media_player;
 }
 
@@ -144,3 +147,12 @@ int gtk_media_player_compare(const void* a, const void* b) {
   return -1;
 }
 
+guint64 gtk_media_player_get_length(PlayerctlPlayer* player) {
+  guint64 length = 0;
+  GError* err = NULL;
+  gchar* length_str = playerctl_player_print_metadata_prop(player, "mpris:length", &err);
+  if(err != NULL) return length;
+  length = g_ascii_strtoull(length_str, NULL, 10);
+  g_free(length_str);
+  return length;
+}

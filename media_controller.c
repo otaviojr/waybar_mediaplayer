@@ -340,6 +340,14 @@ static void gtk_media_controller_on_meta(PlayerctlPlayer* player, GVariant* meta
   printf("gtk_media_controller_on_meta entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_add(self,player);
+  guint64 length = gtk_media_player_get_length(player);
+
+  GList* item = g_list_find_custom(self->media_players, player, gtk_media_player_compare);
+  if(item != NULL){
+    GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
+    media_player->length = length;
+  }
+
   gtk_media_controller_update(self);
 }
 
@@ -520,8 +528,8 @@ static void gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_dat
   printf("gtk_media_controller_on_prev_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
-  playerctl_player_set_position(self->current_player, 0, &err);
   playerctl_player_previous(self->current_player, &err);
+  playerctl_player_set_position(self->current_player, 0, &err);
 }
 
 static void gtk_media_controller_on_play_click(GtkButton* btn, gpointer user_data) {
@@ -535,8 +543,8 @@ static void gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_dat
   printf("gtk_media_controller_on_next_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
-  playerctl_player_set_position(self->current_player, 0, &err);
   playerctl_player_next(self->current_player, &err);
+  playerctl_player_set_position(self->current_player, 0, &err);
 }
 
 static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer user_data){
@@ -555,16 +563,11 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
 
         GError* err = NULL;
         guint64 pos = playerctl_player_get_position(self->current_player, &err);
-        if(err != NULL) return FALSE;
-        gchar* length_str = playerctl_player_print_metadata_prop(self->current_player, "mpris:length", &err);
-        if(err != NULL) return FALSE;
+        if(err != NULL) pos=0;
 
-        guint64 length = g_ascii_strtoull(length_str, NULL, 10);
-        g_free(length_str);
+        if(media_player->length <= 0) return FALSE;
 
-        if(length <= 0) return FALSE;
-
-        guint64 por = (pos*100)/length;
+        guint64 por = (pos*100)/media_player->length;
         guint64 bar_width = (width*por)/100;
 
         GdkRGBA color;
