@@ -562,8 +562,9 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
         guint64 length = g_ascii_strtoull(length_str, NULL, 10);
         g_free(length_str);
 
-        guint64 por = (pos*100)/length;
+        if(length == 0) return FALSE;
 
+        guint64 por = (pos*100)/length;
         guint64 bar_width = (width*por)/100;
 
         GdkRGBA color;
