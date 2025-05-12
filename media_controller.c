@@ -35,6 +35,7 @@ struct _GtkMediaController
 
   MediaPlayerModConfig* config;
   gboolean reversed_scroll;
+  gint scroll_timer;
 
   GtkContainer* container;
   GtkLabel* player_text;
@@ -607,6 +608,11 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
 static gboolean gtk_media_controller_title_scroll(gpointer user_data){
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
+  if(self->scroll_timer > 0){
+    self->scroll_timer--;
+    return TRUE;
+  }
+
   if(!gtk_widget_get_visible(GTK_WIDGET(self->title_scroll))) return TRUE;
 
   GtkAdjustment* adjustment =  gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
@@ -615,12 +621,12 @@ static gboolean gtk_media_controller_title_scroll(gpointer user_data){
 
   if(upper_limit <= 10) return TRUE;
 
-
   if(self->reversed_scroll){
     horizontal_position -= 2;
     if(horizontal_position < 0) {
       horizontal_position = 0;
       self->reversed_scroll = FALSE;
+      self->scroll_timer = 20;
     }
   } else {
     horizontal_position += 2;
@@ -696,6 +702,7 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
 
   if(config->title_scroll){
     self->reversed_scroll = FALSE;
+    self->scroll_timer = 20;
     g_timeout_add(200,gtk_media_controller_title_scroll, self);
   }
 
