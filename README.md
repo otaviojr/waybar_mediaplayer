@@ -4,8 +4,8 @@
   <img src="https://github.com/otaviojr/waybar_mediaplayer/blob/master/docs/example.png" alt="Example">
 </p>
 
-* Support to multiples players
-* Previous and Next when supported
+* Support for multiple players
+* Previous and Next buttons when supported
 * Progress bar
 
 # Usage
