@@ -4,9 +4,9 @@
   <img src="https://github.com/otaviojr/waybar_mediaplayer/blob/master/docs/example.png" alt="Example">
 </p>
 
-*- Support to multiples players
-*- Previous and Next when supported
-*- Progress bar
+* Support to multiples players
+* Previous and Next when supported
+* Progress bar
 
 # Usage
 
@@ -19,7 +19,7 @@ meson compile -C build
 
 ## Dependencies
 
-*- playerctl
+* playerctl
 
 ## Load the module
 
