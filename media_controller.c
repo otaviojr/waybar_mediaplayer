@@ -521,6 +521,7 @@ static void gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_dat
   printf("gtk_media_controller_on_prev_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
+  playerctl_player_set_position(self->current_player, 0, &err);
   playerctl_player_previous(self->current_player, &err);
 }
 
@@ -535,6 +536,7 @@ static void gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_dat
   printf("gtk_media_controller_on_next_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
+  playerctl_player_set_position(self->current_player, 0, &err);
   playerctl_player_next(self->current_player, &err);
 }
 
