@@ -22,7 +22,6 @@
 #include <cairo.h>
 
 #include "media_controller.h"
-#include "cairo-deprecated.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "media_player.h"
