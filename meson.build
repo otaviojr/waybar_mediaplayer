@@ -12,7 +12,9 @@ shared_library('waybar_mediaplayer',
     dependencies: [
         m_dep,
         dependency('gtk+-3.0', version : ['>=3.22.0']),
-        dependency('playerctl', version : ['>=2.4.1'])
+        dependency('playerctl', version : ['>=2.4.1']),
+        dependency('pango', version: '>=1.50'),
+        dependency('cairo', version: '>=1.17')
     ],
     name_prefix: ''
 )

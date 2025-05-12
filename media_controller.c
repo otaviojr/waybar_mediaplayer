@@ -20,20 +20,25 @@
 #include <gdk/gdk.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <cairo.h>
+#include <pango/pango.h>
+#include <glib-object.h>
+#include <glib.h>
+#include <playerctl.h>
+#include <playerctl-player-name.h>
 
 #include "media_controller.h"
-#include "glib-object.h"
-#include "glib.h"
 #include "media_player.h"
-#include "playerctl-player-name.h"
-#include "playerctl.h"
 
 struct _GtkMediaController
 {
   GtkEventBox parent;
 
+  MediaPlayerModConfig* config;
+  gboolean reversed_scroll;
+
   GtkContainer* container;
   GtkLabel* player_text;
+  GtkScrolledWindow* title_scroll;
   GtkLabel* title;
 
   GtkButton* btn_prev;
@@ -142,6 +147,9 @@ gtk_media_controller_finalize(GObject * object)
 
   self->state = GTK_MEDIA_CONTROLLER_STATE_STOPPED;
 
+  if (self->config)
+    g_free(self->config);
+
   if (self->media_players) {
     g_list_free_full(self->media_players, gtk_media_player_destroy);
     self->media_players = NULL;
@@ -227,6 +235,12 @@ static void gtk_media_controller_update(GtkMediaController* self) {
         }
 
         gtk_label_set_text(self->title, final_title);
+        PangoLayout* layout = gtk_label_get_layout(GTK_LABEL(self->title));
+        gint min_width, min_height; 
+        pango_layout_get_pixel_size(layout, &min_width, &min_height);
+        if(min_width > self->config->max_title_widget) min_width = self->config->max_title_widget;
+        gtk_widget_set_size_request(GTK_WIDGET(self->title_scroll), min_width, 0);
+
         g_free(final_title);
       } else {
         gtk_label_set_text(self->title, "No Media");
@@ -522,12 +536,19 @@ void static gtk_media_controller_on_player_bp(GtkLabel* player, GdkEventButton* 
   }
 }
 
+static void gtk_media_controller_reset_title_scroll(GtkMediaController* self){
+  self->reversed_scroll = FALSE;
+  GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
+  gtk_adjustment_set_value(adjustment, 0);
+}
+
 static void gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
   printf("gtk_media_controller_on_prev_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_previous(self->current_player, &err);
   playerctl_player_play(self->current_player, &err);
+  gtk_media_controller_reset_title_scroll(self);
 }
 
 static void gtk_media_controller_on_play_click(GtkButton* btn, gpointer user_data) {
@@ -543,6 +564,7 @@ static void gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_dat
   GError* err = NULL;
   playerctl_player_next(self->current_player, &err);
   playerctl_player_play(self->current_player, &err);
+  gtk_media_controller_reset_title_scroll(self);
 }
 
 static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer user_data){
@@ -582,9 +604,41 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
   return FALSE;
 }
 
+static gboolean gtk_media_controller_title_scroll(gpointer user_data){
+  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+
+  if(!gtk_widget_get_visible(GTK_WIDGET(self->title_scroll))) return TRUE;
+
+  GtkAdjustment* adjustment =  gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
+  double horizontal_position = gtk_adjustment_get_value(adjustment);
+  double upper_limit = gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment);
+
+  if(upper_limit <= 10) return TRUE;
+
+
+  if(self->reversed_scroll){
+    horizontal_position -= 2;
+    if(horizontal_position < 0) {
+      horizontal_position = 0;
+      self->reversed_scroll = FALSE;
+    }
+  } else {
+    horizontal_position += 2;
+    if(horizontal_position >= upper_limit){
+      horizontal_position = upper_limit;
+      self->reversed_scroll = TRUE;
+    }
+  }
+
+  gtk_adjustment_set_value(adjustment, horizontal_position);
+  return TRUE;
+}
+
 GtkMediaController *
-gtk_media_controller_new(){
+gtk_media_controller_new(MediaPlayerModConfig* config){
   GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, NULL);
+
+  self->config = config;
 
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
@@ -628,10 +682,23 @@ gtk_media_controller_new(){
   gtk_container_add(GTK_CONTAINER(self->container), GTK_WIDGET(title_event));
   g_signal_connect(GTK_WIDGET(title_event), "button-press-event", G_CALLBACK(gtk_media_controller_on_title_bp), self);
 
+  self->title_scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new(
+                        gtk_adjustment_new(0, 0, 0, 2, 0, 0), 
+                        gtk_adjustment_new(0, 0, 0, 0, 0, 0)));
+  gtk_container_add(GTK_CONTAINER(title_event), GTK_WIDGET(self->title_scroll));
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->title_scroll), GTK_POLICY_EXTERNAL, GTK_POLICY_EXTERNAL);
+
   self->title = GTK_LABEL(gtk_label_new(""));
-  gtk_container_add(GTK_CONTAINER(title_event), GTK_WIDGET(self->title));
+  gtk_container_add(GTK_CONTAINER(self->title_scroll), GTK_WIDGET(self->title));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->title));
   gtk_style_context_add_class(context,"title");
+  gtk_widget_set_halign (GTK_WIDGET(self->title), GTK_ALIGN_START);
+
+  if(config->title_scroll){
+    self->reversed_scroll = FALSE;
+    g_timeout_add(200,gtk_media_controller_title_scroll, self);
+  }
+
 
   gtk_media_controller_update(self);
 

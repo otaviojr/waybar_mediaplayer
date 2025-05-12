@@ -15,6 +15,10 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
   
   printf("waybar_mediapliayer: init config:\n");
 
+  MediaPlayerModConfig* config = g_malloc(sizeof(MediaPlayerModConfig));
+  config->title_scroll = TRUE;
+  config->max_title_widget = 200;
+
   for (size_t i = 0; i < config_entries_len; i++) {
     printf("  %s = %s\n", config_entries[i].key, config_entries[i].value);
   }
@@ -25,7 +29,7 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
 
   GtkContainer* root = init_info->get_root_widget(init_info->obj);
 
-  inst->container = gtk_media_controller_new();
+  inst->container = gtk_media_controller_new(config);
   gtk_container_add(GTK_CONTAINER(root), GTK_WIDGET(inst->container));
 
   // Return instance object

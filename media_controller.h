@@ -19,6 +19,8 @@
 #include <gtk/gtk.h>
 #include <playerctl.h>
 
+#include "waybar_mediaplayer.h"
+
 G_BEGIN_DECLS
 
 typedef enum _GtkMediaControllerState
@@ -45,7 +47,7 @@ typedef struct _GtkMediaControllerClass
 
 GType gtk_media_controller_get_type(void);
 
-GtkMediaController* gtk_media_controller_new();
+GtkMediaController* gtk_media_controller_new(MediaPlayerModConfig*);
 
 gboolean gtk_media_controller_pause(GtkMediaController* self);
 gboolean gtk_media_controller_play(GtkMediaController* self);

@@ -17,11 +17,17 @@
 #pragma once
 
 #include "waybar_cffi_module.h"
-#include "media_controller.h"
+
+typedef struct _GtkMediaController GtkMediaController;
 
 typedef struct {
   wbcffi_module* waybar_module;
   GtkMediaController* container;
-  //PlayerctlPlayerManager* player_manager;
-  //PlayerctlPlayer* current_player;
 } MediaPlayerMod;
+
+typedef struct {
+  gboolean title_scroll;
+  gint max_title_widget;
+} MediaPlayerModConfig;
+
+
