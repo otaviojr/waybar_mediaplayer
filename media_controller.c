@@ -19,8 +19,10 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
+#include <cairo.h>
 
 #include "media_controller.h"
+#include "cairo-deprecated.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "media_player.h"
@@ -536,13 +538,54 @@ static void gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_dat
   playerctl_player_next(self->current_player, &err);
 }
 
+static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer user_data){
+  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+  GtkStyleContext* context = gtk_widget_get_style_context(widget);
+
+  gint width = gtk_widget_get_allocated_width(widget);
+  gint height = gtk_widget_get_allocated_height(widget);
+
+  if(self->current_player){
+    GList* item = g_list_find_custom(self->media_players, self->current_player, gtk_media_player_compare);
+    if(item){
+      GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
+      if(media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING || 
+        media_player->status == PLAYERCTL_PLAYBACK_STATUS_PAUSED){
+
+        GError* err = NULL;
+        guint64 pos = playerctl_player_get_position(self->current_player, &err);
+        if(err != NULL) return FALSE;
+        gchar* length_str = playerctl_player_print_metadata_prop(self->current_player, "mpris:length", &err);
+        if(err != NULL) return FALSE;
+
+        guint64 length = g_ascii_strtoull(length_str, NULL, 10);
+        g_free(length_str);
+
+        guint64 por = (pos*100)/length;
+
+        guint64 bar_width = (width*por)/100;
+
+        GdkRGBA color;
+        gtk_style_context_get_color(context, GTK_STATE_FLAG_NORMAL, &color);
+
+        cairo_set_line_width(cr, 2.0);
+        cairo_set_source_rgba(cr, color.red,color.green,color.blue, color.alpha);
+        cairo_move_to(cr,0,height);
+        cairo_line_to(cr,bar_width,height);
+        cairo_stroke(cr);
+      }
+    }
+  }
+  return FALSE;
+}
+
 GtkMediaController *
 gtk_media_controller_new(){
   GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, NULL);
 
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
-  //gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
+  g_signal_connect(self->container,"draw",G_CALLBACK(gtk_media_controller_on_draw_progress), self);
   g_object_ref(self->container);
 
   GtkEventBox* player_event = GTK_EVENT_BOX(gtk_event_box_new());
