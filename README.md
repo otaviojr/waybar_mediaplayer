@@ -20,6 +20,7 @@ meson compile -C build
 ## Dependencies
 
 * playerctl
+* Latest waybar version ( Arch use the git version )
 
 ## Load the module
 
