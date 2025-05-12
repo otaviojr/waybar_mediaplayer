@@ -172,6 +172,8 @@ gtk_media_controller_finalize(GObject * object)
 static void gtk_media_controller_update(GtkMediaController* self) {
   printf("gtk_media_controller_update entered\n");
 
+  if(!self->container) return;
+
   guint pos = 0;
   guint size = 0;
   for(struct {int idx; GList* item; } loop = {0, g_list_first(self->media_players)}; loop.item; loop.item = loop.item->next){
