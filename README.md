@@ -1,5 +1,7 @@
 # Waybar Media Player CFFI module
 
+![Example](https://github.com/otaviojr/waybar-mediaplayer/)
+
 # Usage
 
 ## Building this module
