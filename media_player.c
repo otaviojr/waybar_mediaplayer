@@ -151,7 +151,7 @@ guint64 gtk_media_player_get_length(PlayerctlPlayer* player) {
   guint64 length = 0;
   GError* err = NULL;
   gchar* length_str = playerctl_player_print_metadata_prop(player, "mpris:length", &err);
-  if(err != NULL) return length;
+  if(err != NULL || length_str == NULL) return length;
   length = g_ascii_strtoull(length_str, NULL, 10);
   g_free(length_str);
   return length;
