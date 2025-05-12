@@ -1,6 +1,6 @@
 # Waybar Media Player CFFI module
 
-![Example](https://github.com/otaviojr/waybar-mediaplayer/)
+![Example](/home/otaviojr/Documents/Workfiles/Projetos/pessoal/waybar-mediaplayer/docs/example.png)
 
 # Usage
 
