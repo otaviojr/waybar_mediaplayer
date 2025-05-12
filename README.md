@@ -1,6 +1,8 @@
 # Waybar Media Player CFFI module
 
-![Example](/home/otaviojr/Documents/Workfiles/Projetos/pessoal/waybar-mediaplayer/docs/example.png)
+<p align="center">
+  <img src="https://github.com/otaviojr/waybar_mediaplayer/blob/master/docs/example.png" alt="Example">
+</p>
 
 # Usage
 
