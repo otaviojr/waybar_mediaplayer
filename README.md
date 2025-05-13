@@ -37,6 +37,11 @@ Edit your waybar config:
 	"cffi/mediaplayer": {
 		// Path to the compiled dynamic library file
 		"module_path": "/home/<user>/.config/waybar/scripts/waybar_mediaplayer.so"
+		"scroll-title": true,
+		"scroll-interval": 200,
+		"scroll-before-timeout":5,
+		"title-max-width": 200,
+		"scroll-step": 2
 	}
 }
 ```

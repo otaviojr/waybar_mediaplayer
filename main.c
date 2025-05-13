@@ -1,5 +1,6 @@
 #include <glib-object.h>
 #include <playerctl.h>
+#include <string.h>
 
 #include "waybar_mediaplayer.h"
 #include "media_controller.h"
@@ -16,11 +17,30 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
   printf("waybar_mediapliayer: init config:\n");
 
   MediaPlayerModConfig* config = g_malloc(sizeof(MediaPlayerModConfig));
-  config->title_scroll = TRUE;
-  config->max_title_widget = 200;
+  config->scroll_title = TRUE;
+  config->title_max_width = 200;
+  config->scroll_before_timeout = 5;
+  config->scroll_interval=200;
+  config->scroll_step=2;
 
   for (size_t i = 0; i < config_entries_len; i++) {
-    printf("  %s = %s\n", config_entries[i].key, config_entries[i].value);
+    if(strncasecmp("scroll-before-timeout", config_entries[i].key,21)==0){
+      config->scroll_before_timeout = g_ascii_strtoull(config_entries[i].value, NULL, 10); 
+    } else if(strncasecmp("scroll-interval", config_entries[i].key,15)==0){
+      config->scroll_interval = g_ascii_strtoull(config_entries[i].value, NULL, 10);  
+    } else if(strncasecmp("scroll-title", config_entries[i].key,12)==0){
+      if(strncasecmp("true", config_entries[i].value,4)==0){
+        config->scroll_title = TRUE;
+      } else {
+        config->scroll_title = FALSE;
+      }
+    } else if(strncasecmp("title-max-width", config_entries[i].key,15)==0){
+      config->title_max_width = g_ascii_strtoull(config_entries[i].value, NULL, 10); 
+    } else if(strncasecmp("scroll-step", config_entries[i].key,11)==0) {
+      config->scroll_step = g_ascii_strtoull(config_entries[i].value, NULL, 10); 
+    } else {
+      printf("Property '%s' ignored\n", config_entries[i].key);
+    }
   }
 
   // Allocate the instance object

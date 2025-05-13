@@ -241,7 +241,7 @@ static void gtk_media_controller_update(GtkMediaController* self) {
         PangoLayout* layout = gtk_label_get_layout(GTK_LABEL(self->title));
         gint min_width, min_height; 
         pango_layout_get_pixel_size(layout, &min_width, &min_height);
-        if(min_width > self->config->max_title_widget) min_width = self->config->max_title_widget;
+        if(min_width > self->config->title_max_width) min_width = self->config->title_max_width;
         gtk_widget_set_size_request(GTK_WIDGET(self->title_scroll), min_width, 0);
 
         g_free(final_title);
@@ -624,14 +624,14 @@ static gboolean gtk_media_controller_title_scroll(gpointer user_data){
   if(upper_limit <= 10) return TRUE;
 
   if(self->reversed_scroll){
-    horizontal_position -= 2;
+    horizontal_position -= self->config->scroll_step;
     if(horizontal_position < 0) {
       horizontal_position = 0;
       self->reversed_scroll = FALSE;
-      self->scroll_timer = 20;
+      self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
     }
   } else {
-    horizontal_position += 2;
+    horizontal_position += self->config->scroll_step;
     if(horizontal_position >= upper_limit){
       horizontal_position = upper_limit;
       self->reversed_scroll = TRUE;
@@ -691,7 +691,7 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   g_signal_connect(GTK_WIDGET(title_event), "button-press-event", G_CALLBACK(gtk_media_controller_on_title_bp), self);
 
   self->title_scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new(
-                        gtk_adjustment_new(0, 0, 0, 2, 0, 0), 
+                        gtk_adjustment_new(0, 0, 0, 2.0, 0, 0), 
                         gtk_adjustment_new(0, 0, 0, 0, 0, 0)));
   gtk_container_add(GTK_CONTAINER(title_event), GTK_WIDGET(self->title_scroll));
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->title_scroll), GTK_POLICY_EXTERNAL, GTK_POLICY_EXTERNAL);
@@ -702,10 +702,10 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   gtk_style_context_add_class(context,"title");
   gtk_widget_set_halign (GTK_WIDGET(self->title), GTK_ALIGN_START);
 
-  if(config->title_scroll){
+  if(self->config->scroll_title){
     self->reversed_scroll = FALSE;
-    self->scroll_timer = 20;
-    g_timeout_add(200,gtk_media_controller_title_scroll, self);
+    self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+    g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
   }
 
 

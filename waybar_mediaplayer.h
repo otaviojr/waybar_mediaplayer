@@ -26,8 +26,11 @@ typedef struct {
 } MediaPlayerMod;
 
 typedef struct {
-  gboolean title_scroll;
-  gint max_title_widget;
+  gboolean scroll_title;
+  gint title_max_width;
+  gint scroll_before_timeout;
+  gint scroll_interval;
+  gint scroll_step;
 } MediaPlayerModConfig;
 
 
