@@ -36,6 +36,7 @@ struct _GtkMediaController
   MediaPlayerModConfig* config;
   gboolean reversed_scroll;
   gint scroll_timer;
+  gint scroll_timeout;
 
   GtkContainer* container;
   GtkLabel* player_text;
@@ -148,6 +149,8 @@ gtk_media_controller_finalize(GObject * object)
 
   self->state = GTK_MEDIA_CONTROLLER_STATE_STOPPED;
 
+  g_source_remove(self->scroll_timeout);
+
   if (self->config)
     g_free(self->config);
 
@@ -162,6 +165,7 @@ gtk_media_controller_finalize(GObject * object)
   }
 
   g_object_unref(self->container);
+  self->container = NULL;
 
   G_OBJECT_CLASS
       (gtk_media_controller_parent_class)->finalize(object);
@@ -705,7 +709,7 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   if(self->config->scroll_title){
     self->reversed_scroll = FALSE;
     self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
-    g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
+    self->scroll_timeout = g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
   }
 
 
