@@ -51,6 +51,8 @@ struct _GtkMediaController
   PlayerctlPlayer* current_player;
   GList* media_players;
 
+  gint unavailable_timeout;
+
   GtkMediaControllerState state;
 };
 
@@ -80,7 +82,7 @@ gtk_media_controller_state_get_type (void)
       { GTK_MEDIA_CONTROLLER_STATE_STOPPED, "GTK_MEDIA_CONTROLLER_STATE_STOPPED", "stopped" },
       { 0, NULL, NULL }
     };
-    etype = g_enum_register_static (g_intern_static_string ("GtkMediaControllerState"), values);
+  etype = g_enum_register_static (g_intern_static_string ("GtkMediaControllerState"), values);
   }
   return etype;
 }
@@ -150,6 +152,10 @@ gtk_media_controller_finalize(GObject * object)
   self->state = GTK_MEDIA_CONTROLLER_STATE_STOPPED;
 
   g_source_remove(self->scroll_timeout);
+
+  if(self->unavailable_timeout > 0){
+    g_source_remove(self->unavailable_timeout);
+  }
 
   if (self->config)
     g_free(self->config);
@@ -295,7 +301,7 @@ static void gtk_media_controller_player_add(GtkMediaController* self, PlayerctlP
   printf("gtk_media_controller_player_add entered\n");
   GList* item = g_list_find_custom(g_list_first(self->media_players), player, gtk_media_player_compare);
   if(item == NULL){
-    GtkMediaPlayer* media_player = gtk_media_player_new(player); 
+    GtkMediaPlayer* media_player = gtk_media_player_new(self, player); 
     self->media_players = g_list_append(self->media_players, media_player);
     if(media_player->available && self->current_player == NULL){
       self->current_player = media_player->player;
@@ -356,6 +362,16 @@ static void gtk_media_controller_player_remove(GtkMediaController* self, Playerc
   }
 }
 
+static void gtk_media_controller_player_unavailable(gpointer user_data){
+  GtkMediaPlayer* media_player = (GtkMediaPlayer*)user_data;
+  media_player->available = FALSE;
+  media_player->parent->unavailable_timeout = 0;
+}
+
+static void gtk_media_controller_mark_player_unavailable(GtkMediaController* self, GtkMediaPlayer* media_player, gint sec){
+  self->unavailable_timeout = g_timeout_add_once(sec, gtk_media_controller_player_unavailable, media_player);
+}
+
 static void gtk_media_controller_on_playback_status(PlayerctlPlayer* player, PlayerctlPlaybackStatus status, gpointer user_data) {
   printf("gtk_media_controller_on_playback_status entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
@@ -366,6 +382,10 @@ static void gtk_media_controller_on_playback_status(PlayerctlPlayer* player, Pla
       printf("Status: play/pause\n");
       gtk_media_controller_player_add(self,player);
       self->current_player = player;
+      if(self->unavailable_timeout > 0){
+        g_source_remove(self->unavailable_timeout);
+        self->unavailable_timeout = 0;
+      }
       break;
 
     case PLAYERCTL_PLAYBACK_STATUS_STOPPED:
@@ -378,7 +398,7 @@ static void gtk_media_controller_on_playback_status(PlayerctlPlayer* player, Pla
     GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
     media_player->status = status;
     if(status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-      media_player->available = FALSE;
+      gtk_media_controller_mark_player_unavailable(self, media_player, 2000);
       gtk_media_controller_select_next_player(self, player);
     }
   }
@@ -513,6 +533,7 @@ gtk_media_controller_init(GtkMediaController * self)
   self->state = GTK_MEDIA_CONTROLLER_STATE_IDLE;
   self->media_players = NULL;
   self->current_player = NULL;
+  self->unavailable_timeout = 0;
 }
 
 void static gtk_media_controller_on_title_bp(GtkLabel* title, GdkEventButton* event, gpointer user_data){
@@ -547,6 +568,7 @@ static void gtk_media_controller_reset_title_scroll(GtkMediaController* self){
   self->reversed_scroll = FALSE;
   GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
   gtk_adjustment_set_value(adjustment, 0);
+  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
 }
 
 static void gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
@@ -631,8 +653,7 @@ static gboolean gtk_media_controller_title_scroll(gpointer user_data){
     horizontal_position -= self->config->scroll_step;
     if(horizontal_position < 0) {
       horizontal_position = 0;
-      self->reversed_scroll = FALSE;
-      self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+      gtk_media_controller_reset_title_scroll(self);
     }
   } else {
     horizontal_position += self->config->scroll_step;
@@ -707,9 +728,8 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   gtk_widget_set_halign (GTK_WIDGET(self->title), GTK_ALIGN_START);
 
   if(self->config->scroll_title){
-    self->reversed_scroll = FALSE;
-    self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
-    self->scroll_timeout = g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
+    gtk_media_controller_reset_title_scroll(self);
+   self->scroll_timeout = g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
   }
 
 

@@ -104,7 +104,7 @@ void media_player_add_player_by_name(PlayerctlPlayerManager* player_manager, Pla
   } 
 }
 
-GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer* player) {
+GtkMediaPlayer* gtk_media_player_new(GtkMediaController* parent, PlayerctlPlayer* player) {
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)g_malloc(sizeof(GtkMediaPlayer));
   GError* err = NULL;
 
@@ -125,6 +125,8 @@ GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer* player) {
 
   guint64 length = gtk_media_player_get_length(player);
   media_player->length = length;
+
+  media_player->parent = parent;
 
   return media_player;
 }

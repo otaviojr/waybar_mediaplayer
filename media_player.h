@@ -19,6 +19,8 @@
 
 #include <playerctl.h>
 
+#include "media_controller.h"
+
 typedef struct _MediaPlayerManagerCallbacks {
   void (*on_name_added)(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer);
   void (*on_name_removed)(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer);
@@ -37,6 +39,8 @@ typedef struct _MediaPlayerCallbacks {
 } MediaPlayerCallbacks;
 
 typedef struct _GtkMediaPlayer {
+  GtkMediaController* parent;
+
   PlayerctlPlayer* player;
   gboolean available;
   PlayerctlPlaybackStatus status;
@@ -47,7 +51,7 @@ PlayerctlPlayerManager* media_player_new(MediaPlayerManagerCallbacks*, gpointer)
 gboolean media_player_init(PlayerctlPlayerManager*, MediaPlayerCallbacks*, gpointer);
 void media_player_add_player_by_name(PlayerctlPlayerManager*, PlayerctlPlayerName*, MediaPlayerCallbacks*, GError**, gpointer);
 
-GtkMediaPlayer* gtk_media_player_new(PlayerctlPlayer*);
+GtkMediaPlayer* gtk_media_player_new(GtkMediaController*, PlayerctlPlayer*);
 void gtk_media_player_destroy(void*);
 int gtk_media_player_compare(const void*, const void*);
 guint64 gtk_media_player_get_length(PlayerctlPlayer*);
