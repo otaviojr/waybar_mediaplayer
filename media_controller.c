@@ -398,7 +398,7 @@ static void gtk_media_controller_on_playback_status(PlayerctlPlayer* player, Pla
     GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
     media_player->status = status;
     if(status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-      gtk_media_controller_mark_player_unavailable(self, media_player, 2000);
+      gtk_media_controller_mark_player_unavailable(self, media_player, 5000);
       gtk_media_controller_select_next_player(self, player);
     }
   }
