@@ -581,8 +581,8 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
   gint width = gtk_widget_get_allocated_width(widget);
   gint height = gtk_widget_get_allocated_height(widget);
 
-  if(self->current_player){
-    GList* item = g_list_find_custom(self->media_players, self->current_player, gtk_media_player_compare);
+  if(self->current_player && self->media_players){
+    GList* item = g_list_find_custom(g_list_first(self->media_players), self->current_player, gtk_media_player_compare);
     if(item){
       GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
       if(media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING || 
@@ -614,12 +614,12 @@ static gboolean gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t
 static gboolean gtk_media_controller_title_scroll(gpointer user_data){
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
+  if(!gtk_widget_get_visible(GTK_WIDGET(self->title_scroll))) return TRUE;
+
   if(self->scroll_timer > 0){
     self->scroll_timer--;
     return TRUE;
   }
-
-  if(!gtk_widget_get_visible(GTK_WIDGET(self->title_scroll))) return TRUE;
 
   GtkAdjustment* adjustment =  gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
   double horizontal_position = gtk_adjustment_get_value(adjustment);
