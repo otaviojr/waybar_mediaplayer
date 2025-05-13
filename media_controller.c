@@ -670,28 +670,28 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_prev));
   gtk_style_context_add_class(context,"button");
   gtk_style_context_add_class(context,"prev-button");
-  g_signal_connect(self->btn_prev,"pressed",G_CALLBACK(gtk_media_controller_on_prev_click), self);
+  g_signal_connect(self->btn_prev,"clicked",G_CALLBACK(gtk_media_controller_on_prev_click), self);
 
   self->btn_play = GTK_BUTTON(gtk_button_new_with_label((const gchar*) u8"\uF04B"));
   gtk_container_add(GTK_CONTAINER(button_container), GTK_WIDGET(self->btn_play));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_play));
   gtk_style_context_add_class(context,"button");
   gtk_style_context_add_class(context,"play-button");
-  g_signal_connect(self->btn_play,"pressed",G_CALLBACK(gtk_media_controller_on_play_click), self);
+  g_signal_connect(self->btn_play,"clicked",G_CALLBACK(gtk_media_controller_on_play_click), self);
 
   self->btn_next = GTK_BUTTON(gtk_button_new_with_label((const gchar*) u8"\uF051"));
   gtk_container_add(GTK_CONTAINER(button_container), GTK_WIDGET(self->btn_next));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_next));
   gtk_style_context_add_class(context,"button");
   gtk_style_context_add_class(context,"next-button");
-  g_signal_connect(self->btn_next,"pressed",G_CALLBACK(gtk_media_controller_on_next_click), self);
+  g_signal_connect(self->btn_next,"clicked",G_CALLBACK(gtk_media_controller_on_next_click), self);
 
   GtkEventBox* title_event = GTK_EVENT_BOX(gtk_event_box_new());
   gtk_container_add(GTK_CONTAINER(self->container), GTK_WIDGET(title_event));
   g_signal_connect(GTK_WIDGET(title_event), "button-press-event", G_CALLBACK(gtk_media_controller_on_title_bp), self);
 
   self->title_scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new(
-                        gtk_adjustment_new(0, 0, 0, 2.0, 0, 0), 
+                        gtk_adjustment_new(0, 0, 0, 1.0, 0, 0), 
                         gtk_adjustment_new(0, 0, 0, 0, 0, 0)));
   gtk_container_add(GTK_CONTAINER(title_event), GTK_WIDGET(self->title_scroll));
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->title_scroll), GTK_POLICY_EXTERNAL, GTK_POLICY_EXTERNAL);
