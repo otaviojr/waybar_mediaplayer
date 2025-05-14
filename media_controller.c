@@ -299,6 +299,22 @@ gtk_media_controller_update(GtkMediaController* self) {
 }
 
 static void 
+gtk_media_controller_reset_title_scroll(GtkMediaController* self){
+  self->reversed_scroll = FALSE;
+  GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
+  gtk_adjustment_set_value(adjustment, 0);
+  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+}
+
+static void
+gtk_media_controller_set_player(GtkMediaController* self, PlayerctlPlayer* player){
+  if(self->current_player != NULL && player != NULL && self->current_player != player){
+    gtk_media_controller_reset_title_scroll(self);
+  }
+  self->current_player = player;
+}
+
+static void 
 gtk_media_controller_player_add(GtkMediaController* self, PlayerctlPlayer* player){
   printf("gtk_media_controller_player_add entered\n");
   GList* item = g_list_find_custom(g_list_first(self->media_players), player, gtk_media_player_compare);
@@ -306,7 +322,7 @@ gtk_media_controller_player_add(GtkMediaController* self, PlayerctlPlayer* playe
     GtkMediaPlayer* media_player = gtk_media_player_new(self, player); 
     self->media_players = g_list_append(self->media_players, media_player);
     if(media_player->available && self->current_player == NULL){
-      self->current_player = media_player->player;
+      gtk_media_controller_set_player(self, media_player->player);
     }
     printf("New player added to media controller %ld\n", (gint64)player);
   } else {
@@ -329,7 +345,7 @@ gtk_media_controller_select_next_player(GtkMediaController* self, PlayerctlPlaye
         }
       }
       if(next_player != NULL){
-        self->current_player = next_player;
+        gtk_media_controller_set_player(self, next_player);
         return;
       }
     }
@@ -345,7 +361,7 @@ gtk_media_controller_select_next_player(GtkMediaController* self, PlayerctlPlaye
         break;
       }
     }
-    self->current_player = next_player;
+    gtk_media_controller_set_player(self, next_player);
   }
   return;
 }
@@ -362,7 +378,11 @@ gtk_media_controller_player_remove(GtkMediaController* self, PlayerctlPlayer* pl
     }
   } else {
     if(self->current_player == player)
-    self->current_player = NULL;
+      gtk_media_controller_set_player(self, NULL);
+  }
+  if(self->unavailable_timeout > 0){
+    g_source_remove(self->unavailable_timeout);
+    self->unavailable_timeout = 0;
   }
 }
 
@@ -388,7 +408,7 @@ gtk_media_controller_on_playback_status(PlayerctlPlayer* player, PlayerctlPlayba
     case PLAYERCTL_PLAYBACK_STATUS_PAUSED:
       printf("Status: play/pause\n");
       gtk_media_controller_player_add(self,player);
-      self->current_player = player;
+      gtk_media_controller_set_player(self,player);
       if(self->unavailable_timeout > 0){
         g_source_remove(self->unavailable_timeout);
         self->unavailable_timeout = 0;
@@ -423,7 +443,7 @@ gtk_media_controller_on_meta(PlayerctlPlayer* player, GVariant* metadata, gpoint
   if(item != NULL){
     GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
     media_player->length = length;
-    self->current_player = player;
+    gtk_media_controller_set_player(self, player);
   }
 
   gtk_media_controller_update(self);
@@ -434,7 +454,7 @@ gtk_media_controller_on_seeked(PlayerctlPlayer* player, gint64 position, gpointe
   printf("gtk_media_controller_on_seek\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_add(self,player);
-  self->current_player = player;
+  gtk_media_controller_set_player(self,player);
   gtk_media_controller_update(self);
 }
 
@@ -442,7 +462,9 @@ static void
 gtk_media_controller_on_exit(PlayerctlPlayer* player, gpointer user_data){
   printf("gtk_media_controller_on_exit entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  if(self->current_player == player) self->current_player = NULL;
+  if(self->current_player == player){
+    gtk_media_controller_set_player(self, NULL);
+  }
   gtk_media_controller_update(self);
 }
 
@@ -578,14 +600,6 @@ gtk_media_controller_on_player_bp(GtkLabel* player, GdkEventButton* event, gpoin
 
     printf("Left mouse click on player detected\n");
   }
-}
-
-static void 
-gtk_media_controller_reset_title_scroll(GtkMediaController* self){
-  self->reversed_scroll = FALSE;
-  GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
-  gtk_adjustment_set_value(adjustment, 0);
-  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
 }
 
 static void 
