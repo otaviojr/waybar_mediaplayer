@@ -303,9 +303,11 @@ gtk_media_controller_update(GtkMediaController* self) {
 static void 
 gtk_media_controller_reset_title_scroll(GtkMediaController* self){
   self->reversed_scroll = FALSE;
-  GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
-  gtk_adjustment_set_value(adjustment, 0);
-  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+  if(self->container && gtk_widget_get_parent(GTK_WIDGET(self->container))){
+    GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
+    gtk_adjustment_set_value(adjustment, 0);
+    self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+  }
 }
 
 static void
@@ -394,6 +396,7 @@ gtk_media_controller_player_unavailable(gpointer user_data){
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)user_data;
   media_player->available = FALSE;
   media_player->parent->unavailable_timeout = 0;
+  gtk_media_controller_select_next_player(media_player->parent, media_player->player);
   gtk_media_controller_update(media_player->parent);
 }
 
@@ -430,7 +433,6 @@ gtk_media_controller_on_playback_status(PlayerctlPlayer* player, PlayerctlPlayba
     media_player->status = status;
     if(status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
       gtk_media_controller_mark_player_unavailable(self, media_player, 5000);
-      gtk_media_controller_select_next_player(self, player);
     }
   }
   gtk_media_controller_update(self);
@@ -480,7 +482,7 @@ static void
 gtk_media_controller_on_player_added(PlayerctlPlayerManager* player_manager, PlayerctlPlayer* player, gpointer user_data) {
   printf("gtk_media_controller_on_player_added entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  gtk_media_controller_player_add(self,player);
+  gtk_media_controller_player_add(self, player);
   gtk_media_controller_update(self);
 }
 
@@ -535,7 +537,7 @@ gtk_media_controller_constructed(GObject* object)
   self->player_manager = media_player_new(&manager_callbacks, self);
   media_player_init(self->player_manager, &callbacks, self);
 
-  printf("gtk_media_controller_constructed finished\n");
+  printf("gtk_media_controller_constructed fnished\n");
 }
 
 static void

@@ -114,11 +114,13 @@ gtk_media_player_new(GtkMediaController* parent, PlayerctlPlayer* player) {
 
   media_player->player = player;
   gchar* title = playerctl_player_get_title(player, &err);
-  if(!err && title && strlen(title) == 0){
+  if(err || !title || strlen(title) == 0){
     media_player->available = FALSE;
   }else{
     media_player->available = TRUE;
   }
+
+  printf("media player created with availability= %d\n", media_player->available);
 
   GValue val = G_VALUE_INIT;
   g_value_init(&val, PLAYERCTL_TYPE_PLAYBACK_STATUS);
