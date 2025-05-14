@@ -451,10 +451,14 @@ gtk_media_controller_on_meta(PlayerctlPlayer* player, GVariant* metadata, gpoint
 
 static void 
 gtk_media_controller_on_seeked(PlayerctlPlayer* player, gint64 position, gpointer user_data){
-  printf("gtk_media_controller_on_seek\n");
+  gint64 sec = position/1000000;
+  printf("gtk_media_controller_on_seek = %ld\n", sec);
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_add(self,player);
   gtk_media_controller_set_player(self,player);
+  if(sec == 0){
+    gtk_media_controller_reset_title_scroll(self);
+  }
   gtk_media_controller_update(self);
 }
 
@@ -608,7 +612,6 @@ gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_previous(self->current_player, &err);
-  playerctl_player_play(self->current_player, &err);
   gtk_media_controller_reset_title_scroll(self);
 }
 
@@ -626,7 +629,6 @@ gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_data) {
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_next(self->current_player, &err);
-  playerctl_player_play(self->current_player, &err);
   gtk_media_controller_reset_title_scroll(self);
 }
 
