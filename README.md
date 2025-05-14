@@ -8,6 +8,7 @@
 * Previous and Next buttons when supported
 * Progress bar
 * will show only when a player becomes available
+* Compact: Titles will scroll
 
 # Usage
 
