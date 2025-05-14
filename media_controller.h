@@ -46,9 +46,7 @@ typedef struct _GtkMediaControllerClass
 #define GTK_MEDIA_CONTROLLER_CAST(obj)                    ((GtkMediaController*)(obj))
 
 GType gtk_media_controller_get_type(void);
-
 GtkMediaController* gtk_media_controller_new(MediaPlayerModConfig*);
-
 gboolean gtk_media_controller_pause(GtkMediaController* self);
 gboolean gtk_media_controller_play(GtkMediaController* self);
 gboolean gtk_media_controller_toogle(GtkMediaController* self);

@@ -11,7 +11,8 @@ static int instance_count = 0;
 // You must
 const size_t wbcffi_version = 2;
 
-void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
+void* 
+wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
   
   printf("waybar_mediapliayer: init config:\n");
@@ -57,16 +58,20 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
   return inst;
 }
 
-void wbcffi_deinit(void* instance) {
+void 
+wbcffi_deinit(void* instance) {
   printf("waybar_mediaplayer inst=%p: free memory\n", instance);
   free(instance);
 }
 
-void wbcffi_update(void* instance) { printf("waybar_mediaplayer inst=%p: Update request\n", instance); }
+void 
+wbcffi_update(void* instance) { printf("waybar_mediaplayer inst=%p: Update request\n", instance); }
 
-void wbcffi_refresh(void* instance, int signal) {
+void 
+wbcffi_refresh(void* instance, int signal) {
 }
 
-void wbcffi_doaction(void* instance, const char* name) {
+void 
+wbcffi_doaction(void* instance, const char* name) {
   printf("waybar_mediaplayer inst=%p: doAction(%s)\n", instance, name);
 }

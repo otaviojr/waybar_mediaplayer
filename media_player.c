@@ -22,7 +22,8 @@
 
 #include "media_player.h"
 
-PlayerctlPlayerManager* media_player_new(MediaPlayerManagerCallbacks* callbacks, gpointer user_data) {
+PlayerctlPlayerManager* 
+media_player_new(MediaPlayerManagerCallbacks* callbacks, gpointer user_data) {
   GError * err = NULL;
 
   PlayerctlPlayerManager* player_manager = playerctl_player_manager_new(&err);
@@ -48,7 +49,8 @@ PlayerctlPlayerManager* media_player_new(MediaPlayerManagerCallbacks* callbacks,
   return player_manager;
 }
 
-gboolean media_player_init(PlayerctlPlayerManager* player_manager, MediaPlayerCallbacks* callbacks, gpointer user_data) {
+gboolean 
+media_player_init(PlayerctlPlayerManager* player_manager, MediaPlayerCallbacks* callbacks, gpointer user_data) {
   GError* err = NULL;
   GValue value = G_VALUE_INIT;
   GList* names = NULL;
@@ -76,7 +78,8 @@ gboolean media_player_init(PlayerctlPlayerManager* player_manager, MediaPlayerCa
   return TRUE;
 }
 
-void media_player_add_player_by_name(PlayerctlPlayerManager* player_manager, PlayerctlPlayerName* name, MediaPlayerCallbacks* callbacks, GError** err, gpointer user_data){
+void 
+media_player_add_player_by_name(PlayerctlPlayerManager* player_manager, PlayerctlPlayerName* name, MediaPlayerCallbacks* callbacks, GError** err, gpointer user_data){
   PlayerctlPlayer* player =  playerctl_player_new_from_name(name, err);
   if( *err == NULL){
     if(callbacks->on_playback_status)
@@ -104,7 +107,8 @@ void media_player_add_player_by_name(PlayerctlPlayerManager* player_manager, Pla
   } 
 }
 
-GtkMediaPlayer* gtk_media_player_new(GtkMediaController* parent, PlayerctlPlayer* player) {
+GtkMediaPlayer* 
+gtk_media_player_new(GtkMediaController* parent, PlayerctlPlayer* player) {
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)g_malloc(sizeof(GtkMediaPlayer));
   GError* err = NULL;
 
@@ -131,7 +135,8 @@ GtkMediaPlayer* gtk_media_player_new(GtkMediaController* parent, PlayerctlPlayer
   return media_player;
 }
 
-void gtk_media_player_destroy(void* pointer) {
+void 
+gtk_media_player_destroy(void* pointer) {
   printf("gtk_media_player_destroy entered\n");
   GtkMediaPlayer* media_player = (GtkMediaPlayer*)pointer;
 
@@ -143,13 +148,15 @@ void gtk_media_player_destroy(void* pointer) {
   printf("gtk_media_player_destroy exited\n");
 }
 
-int gtk_media_player_compare(const void* a, const void* b) {
+int 
+gtk_media_player_compare(const void* a, const void* b) {
   GtkMediaPlayer* a1 = (GtkMediaPlayer*)a;
   if( a1->player == b) return 0;
   return -1;
 }
 
-guint64 gtk_media_player_get_length(PlayerctlPlayer* player) {
+guint64 
+gtk_media_player_get_length(PlayerctlPlayer* player) {
   guint64 length = 0;
   GError* err = NULL;
   gchar* length_str = playerctl_player_print_metadata_prop(player, "mpris:length", &err);
