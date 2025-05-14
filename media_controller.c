@@ -237,20 +237,24 @@ gtk_media_controller_update(GtkMediaController* self) {
 
       if((artist && strlen(artist) > 0) || (title && strlen(title) > 0)){
         gint mem_size = 0;
-        if(artist) mem_size += strlen(artist);
-        if(title) mem_size += strlen(title);
+        if(artist && strlen(artist) > 0) mem_size += strlen(artist);
+        if(title && strlen(title) > 0) mem_size += strlen(title);
 
         gint final_size = mem_size+4;
         gchar* final_title = g_malloc(final_size);
-        if(artist && title){
+        if(artist && strlen(artist) > 0 && title && strlen(title) > 0){
           g_snprintf(final_title,final_size, "%s - %s", artist, title);
-        } else if(artist) {
+        } else if(artist && strlen(artist) > 0) {
           g_snprintf(final_title,final_size, "%s", artist);
-        } else if(title) {
+        } else if(title && strlen(title) > 0) {
           g_snprintf(final_title,final_size, "%s", title);
-        }
+        }        
 
-        gtk_label_set_text(self->title, final_title);
+        if(mem_size > 0)
+          gtk_label_set_text(self->title, final_title);
+        else
+          gtk_label_set_text(self->title, "No Name");
+
         PangoLayout* layout = gtk_label_get_layout(GTK_LABEL(self->title));
         gint min_width, min_height; 
         pango_layout_get_pixel_size(layout, &min_width, &min_height);
@@ -326,7 +330,8 @@ gtk_media_controller_player_add(GtkMediaController* self, PlayerctlPlayer* playe
     GtkMediaPlayer* media_player = gtk_media_player_new(self, player); 
     self->media_players = g_list_append(self->media_players, media_player);
     printf("New player added to media controller %ld\n", (gint64)media_player->player);
-    gtk_media_controller_set_player(self, media_player->player);
+    if(media_player->available)
+      gtk_media_controller_set_player(self, media_player->player);
   } else {
     GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
     media_player->available = TRUE;
