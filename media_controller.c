@@ -777,7 +777,7 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
   return TRUE;
 }
 
-GtkMediaController *
+GtkMediaController*
 gtk_media_controller_new(MediaPlayerModConfig* config){
   printf("gtk_media_controller_new entered\n");
   GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, NULL);
@@ -790,12 +790,11 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
   g_signal_connect(self->container,"draw",G_CALLBACK(gtk_media_controller_on_draw_progress), self);
 
-  if(config->tooltip)
-    g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
-
   g_object_ref(self->container);
 
   if(config->tooltip){
+    g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
+
     self->tooltip_window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_POPUP));
     gtk_widget_set_tooltip_window(GTK_WIDGET(self->container), GTK_WINDOW(self->tooltip_window));
 
