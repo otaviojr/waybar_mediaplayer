@@ -736,8 +736,7 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
     printf("Album art url = %s\n", art_url);
 
     if (g_str_has_prefix(art_url, "file://")) {
-      gint width, height;
-      gtk_widget_get_size_request(GTK_WIDGET(self->tooltip_image), &width, &height);
+      gint width, height, image_width, image_height;
       GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
       
       g_free(art_url);
@@ -748,9 +747,18 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
       }
 
       if(pixbuf){
+        image_width = gdk_pixbuf_get_width(pixbuf);
+        image_height = gdk_pixbuf_get_height(pixbuf);
+
+        gdouble ratio = (gdouble)image_height/(gdouble)image_width;
+
+        width = self->config->tooltip_image_width;
+        height = image_width*ratio;
+
         GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
         if (pixbuf_scaled) {
           gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
+          gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
           g_object_unref(pixbuf_scaled);
         } else {
           printf("Pixbuf can not be read.\n");
@@ -781,20 +789,23 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
   g_signal_connect(self->container,"draw",G_CALLBACK(gtk_media_controller_on_draw_progress), self);
-  g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
+  if(config->tooltip)
+    g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
   g_object_ref(self->container);
 
-  self->tooltip_window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_POPUP));
-  gtk_widget_set_tooltip_window(GTK_WIDGET(self->container), GTK_WINDOW(self->tooltip_window));
+  if(config->tooltip){
+    self->tooltip_window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_POPUP));
+    gtk_widget_set_tooltip_window(GTK_WIDGET(self->container), GTK_WINDOW(self->tooltip_window));
 
-  GtkBox* tooltip_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL,5));
-  gtk_container_add(GTK_CONTAINER(self->tooltip_window), GTK_WIDGET(tooltip_container));
+    GtkBox* tooltip_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL,5));
+    gtk_container_add(GTK_CONTAINER(self->tooltip_window), GTK_WIDGET(tooltip_container));
 
-  self->tooltip_image = GTK_IMAGE(gtk_image_new());
-  gtk_container_add(GTK_CONTAINER(tooltip_container), GTK_WIDGET(self->tooltip_image));
-  gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), 150, 150);
+    self->tooltip_image = GTK_IMAGE(gtk_image_new());
+    gtk_container_add(GTK_CONTAINER(tooltip_container), GTK_WIDGET(self->tooltip_image));
+    gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), config->tooltip_image_width, config->tooltip_image_height);
 
-  gtk_widget_show_all(GTK_WIDGET(tooltip_container));
+    gtk_widget_show_all(GTK_WIDGET(tooltip_container));
+  }
 
   GtkEventBox* player_event = GTK_EVENT_BOX(gtk_event_box_new());
   gtk_container_add(GTK_CONTAINER(self->container), GTK_WIDGET(player_event));

@@ -23,6 +23,9 @@ wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config
   config->scroll_before_timeout = 5;
   config->scroll_interval=200;
   config->scroll_step=2;
+  config->tooltip = TRUE;
+  config->tooltip_image_width = 300;
+  config->tooltip_image_height = 300;
 
   for (size_t i = 0; i < config_entries_len; i++) {
     if(strncasecmp("scroll-before-timeout", config_entries[i].key,21)==0){

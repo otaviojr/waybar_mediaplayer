@@ -31,6 +31,9 @@ typedef struct {
   gint scroll_before_timeout;
   gint scroll_interval;
   gint scroll_step;
+  gboolean tooltip;
+  gboolean tooltip_image_width;
+  gboolean tooltip_image_height;
 } MediaPlayerModConfig;
 
 
