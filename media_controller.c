@@ -753,7 +753,7 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
         gdouble ratio = (gdouble)image_height/(gdouble)image_width;
 
         width = self->config->tooltip_image_width;
-        height = image_width*ratio;
+        height = width*ratio;
 
         GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
         if (pixbuf_scaled) {
@@ -789,8 +789,10 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
   g_signal_connect(self->container,"draw",G_CALLBACK(gtk_media_controller_on_draw_progress), self);
+
   if(config->tooltip)
     g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
+
   g_object_ref(self->container);
 
   if(config->tooltip){
