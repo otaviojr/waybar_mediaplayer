@@ -43,6 +43,13 @@ Edit your waybar config:
 		"scroll-before-timeout":5,
 		"title-max-width": 200,
 		"scroll-step": 2
+		"tooltip": true,
+		"tooltip-image-width": 300,
+		"tooltip-image-height": 300,
+		"btn-play-icon": "",
+		"btn-pause-icon": "",
+		"btn-prev-icon": "",
+		"btn-next-icon": ""
 	}
 }
 ```
