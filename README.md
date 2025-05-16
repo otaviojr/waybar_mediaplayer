@@ -59,9 +59,18 @@ Edit your waybar config:
 Edit your style.css
 ```css
 #mediaplayer {
+	color: red;
 }
 
 #mediaplayer .button {
+    color: white;
+    background: transparent;
+    border-width: 0px;
+    border-radius: 0px;
+    margin: 0px;
+    padding: 0px;
+    box-shadow: none;
+    text-shadow: none;
 }
 
 #mediaplayer .play-button{
@@ -74,8 +83,10 @@ Edit your style.css
 }
 
 #mediaplayer .players {
+	color: white;
 }
 
 #mediaplayer .title {
+	color: white;
 }
 ```
