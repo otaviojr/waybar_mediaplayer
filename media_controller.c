@@ -160,8 +160,13 @@ gtk_media_controller_finalize(GObject * object)
     g_source_remove(self->unavailable_timeout);
   }
 
-  if (self->config)
+  if (self->config){
+    g_free(self->config->btn_play);
+    g_free(self->config->btn_pause);
+    g_free(self->config->btn_next);
+    g_free(self->config->btn_prev);
     g_free(self->config);
+  }
 
   if (self->media_players) {
     g_list_free_full(self->media_players, gtk_media_player_destroy);
@@ -280,9 +285,9 @@ gtk_media_controller_update(GtkMediaController* self) {
       if(item){
         GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
         if(media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING){
-          gtk_button_set_label(self->btn_play, (const gchar*)u8"\uF04C");
+          gtk_button_set_label(self->btn_play, self->config->btn_pause);
         } else {
-          gtk_button_set_label(self->btn_play, (const gchar*)u8"\uF04B");
+          gtk_button_set_label(self->btn_play, self->config->btn_play);
         }
 
         GValue val = G_VALUE_INIT;
@@ -820,21 +825,21 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   GtkContainer* button_container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,1));
   gtk_container_add(GTK_CONTAINER(self->container), GTK_WIDGET(button_container));
 
-  self->btn_prev = GTK_BUTTON(gtk_button_new_with_label((const gchar*) u8"\uF048"));
+  self->btn_prev = GTK_BUTTON(gtk_button_new_with_label(config->btn_prev));
   gtk_container_add(GTK_CONTAINER(button_container), GTK_WIDGET(self->btn_prev));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_prev));
   gtk_style_context_add_class(context,"button");
   gtk_style_context_add_class(context,"prev-button");
   g_signal_connect(self->btn_prev,"clicked",G_CALLBACK(gtk_media_controller_on_prev_click), self);
 
-  self->btn_play = GTK_BUTTON(gtk_button_new_with_label((const gchar*) u8"\uF04B"));
+  self->btn_play = GTK_BUTTON(gtk_button_new_with_label(config->btn_play));
   gtk_container_add(GTK_CONTAINER(button_container), GTK_WIDGET(self->btn_play));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_play));
   gtk_style_context_add_class(context,"button");
   gtk_style_context_add_class(context,"play-button");
   g_signal_connect(self->btn_play,"clicked",G_CALLBACK(gtk_media_controller_on_play_click), self);
 
-  self->btn_next = GTK_BUTTON(gtk_button_new_with_label((const gchar*) u8"\uF051"));
+  self->btn_next = GTK_BUTTON(gtk_button_new_with_label(config->btn_next));
   gtk_container_add(GTK_CONTAINER(button_container), GTK_WIDGET(self->btn_next));
   context = gtk_widget_get_style_context(GTK_WIDGET(self->btn_next));
   gtk_style_context_add_class(context,"button");

@@ -34,6 +34,10 @@ typedef struct {
   gboolean tooltip;
   gboolean tooltip_image_width;
   gboolean tooltip_image_height;
+  gchar* btn_play;
+  gchar* btn_pause;
+  gchar* btn_prev;
+  gchar* btn_next;
 } MediaPlayerModConfig;
 
 
