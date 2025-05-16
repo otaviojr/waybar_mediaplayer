@@ -17,6 +17,7 @@
 ```bash
 meson setup build
 meson compile -C build
+cp build/waybar_mediaplayer.so /home/<user>/.config/waybar/scripts
 ```
 
 ## Dependencies
