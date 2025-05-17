@@ -313,8 +313,8 @@ gtk_media_controller_update(GtkMediaController* self) {
 }
 
 static void 
-gtk_media_controller_reset_title_scroll(GtkMediaController* self){
-  self->reversed_scroll = FALSE;
+gtk_media_controller_reset_title_scroll(GtkMediaController* self, gboolean reversed){
+  self->reversed_scroll = reversed;
   if(self->container && gtk_widget_get_parent(GTK_WIDGET(self->container))){
     GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
     gtk_adjustment_set_value(adjustment, 0);
@@ -325,7 +325,7 @@ gtk_media_controller_reset_title_scroll(GtkMediaController* self){
 static void
 gtk_media_controller_set_player(GtkMediaController* self, PlayerctlPlayer* player){
   if(self->current_player != NULL && player != NULL && self->current_player != player){
-    gtk_media_controller_reset_title_scroll(self);
+    gtk_media_controller_reset_title_scroll(self, FALSE);
   }
   self->current_player = player;
 }
@@ -476,7 +476,7 @@ gtk_media_controller_on_seeked(PlayerctlPlayer* player, gint64 position, gpointe
   gtk_media_controller_player_add(self,player);
   gtk_media_controller_set_player(self,player);
   if(sec == 0){
-    gtk_media_controller_reset_title_scroll(self);
+    gtk_media_controller_reset_title_scroll(self, FALSE);
   }
   gtk_media_controller_update(self);
 }
@@ -631,7 +631,7 @@ gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_previous(self->current_player, &err);
-  gtk_media_controller_reset_title_scroll(self);
+  gtk_media_controller_reset_title_scroll(self, FALSE);
 }
 
 static void 
@@ -648,7 +648,7 @@ gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_data) {
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   GError* err = NULL;
   playerctl_player_next(self->current_player, &err);
-  gtk_media_controller_reset_title_scroll(self);
+  gtk_media_controller_reset_title_scroll(self, FALSE);
 }
 
 static gboolean 
@@ -714,13 +714,13 @@ gtk_media_controller_title_scroll(gpointer user_data){
     horizontal_position -= self->config->scroll_step;
     if(horizontal_position < 0) {
       horizontal_position = 0;
-      gtk_media_controller_reset_title_scroll(self);
+      gtk_media_controller_reset_title_scroll(self, FALSE);
     }
   } else {
     horizontal_position += self->config->scroll_step;
     if(horizontal_position >= upper_limit){
       horizontal_position = upper_limit;
-      self->reversed_scroll = TRUE;
+      gtk_media_controller_reset_title_scroll(self, TRUE);
     }
   }
 
@@ -863,7 +863,7 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   gtk_widget_set_halign (GTK_WIDGET(self->title), GTK_ALIGN_START);
 
   if(self->config->scroll_title){
-    gtk_media_controller_reset_title_scroll(self);
+    gtk_media_controller_reset_title_scroll(self, FALSE);
 
    self->scroll_timeout = g_timeout_add(self->config->scroll_interval,gtk_media_controller_title_scroll, self);
   }
