@@ -263,16 +263,16 @@ gtk_media_controller_update(GtkMediaController* self) {
         else
           gtk_label_set_text(self->title, "No Name");
 
-        PangoLayout* layout = gtk_label_get_layout(GTK_LABEL(self->title));
-        gint min_width, min_height; 
-        pango_layout_get_pixel_size(layout, &min_width, &min_height);
-        if(min_width > self->config->title_max_width) min_width = self->config->title_max_width;
-        gtk_widget_set_size_request(GTK_WIDGET(self->title_scroll), min_width, 0);
-
-        g_free(final_title);
+       g_free(final_title);
       } else {
         gtk_label_set_text(self->title, "No Media");
       }
+
+      PangoLayout* layout = gtk_label_get_layout(GTK_LABEL(self->title));
+      gint min_width, min_height; 
+      pango_layout_get_pixel_size(layout, &min_width, &min_height);
+      if(min_width > self->config->title_max_width) min_width = self->config->title_max_width;
+      gtk_widget_set_size_request(GTK_WIDGET(self->title_scroll), min_width, 0);
 
       if(artist)
         g_free(artist);
