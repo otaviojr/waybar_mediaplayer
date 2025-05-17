@@ -708,7 +708,7 @@ gtk_media_controller_title_scroll(gpointer user_data){
   double horizontal_position = gtk_adjustment_get_value(adjustment);
   double upper_limit = gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment);
 
-  if(upper_limit <= 10) return TRUE;
+  if(upper_limit <= 5) return TRUE;
 
   if(self->reversed_scroll){
     horizontal_position -= self->config->scroll_step;
