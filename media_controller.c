@@ -315,12 +315,11 @@ gtk_media_controller_update(GtkMediaController* self) {
 static void 
 gtk_media_controller_reset_title_scroll(GtkMediaController* self, gboolean reversed){
   self->reversed_scroll = reversed;
-  if(self->container && gtk_widget_get_parent(GTK_WIDGET(self->container))){
-    if(!reversed){
-      GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
-      gtk_adjustment_set_value(adjustment, 0);
-    }
-    self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+
+  if(self->container && gtk_widget_get_parent(GTK_WIDGET(self->container)) && !reversed){
+    GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
+    gtk_adjustment_set_value(adjustment, 0);
   }
 }
 
