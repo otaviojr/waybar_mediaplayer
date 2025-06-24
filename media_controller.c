@@ -315,11 +315,14 @@ gtk_media_controller_update(GtkMediaController* self) {
 static void 
 gtk_media_controller_reset_title_scroll(GtkMediaController* self, gboolean reversed){
   self->reversed_scroll = reversed;
-  self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
+
+  if(self->config)
+    self->scroll_timer = self->config->scroll_before_timeout*(1000/self->config->scroll_interval);
 
   if(self->container && gtk_widget_get_parent(GTK_WIDGET(self->container)) && !reversed){
     GtkAdjustment* adjustment = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(self->title_scroll));
-    gtk_adjustment_set_value(adjustment, 0);
+    if(adjustment != NULL)
+      gtk_adjustment_set_value(adjustment, 0);
   }
 }
 
@@ -339,7 +342,7 @@ gtk_media_controller_player_add(GtkMediaController* self, PlayerctlPlayer* playe
     GtkMediaPlayer* media_player = gtk_media_player_new(self, player); 
     self->media_players = g_list_append(self->media_players, media_player);
     printf("New player added to media controller %ld\n", (gint64)media_player->player);
-    if(media_player->available)
+    if((media_player->available && self->current_player == NULL) || media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING)
       gtk_media_controller_set_player(self, media_player->player);
   } else {
     GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
