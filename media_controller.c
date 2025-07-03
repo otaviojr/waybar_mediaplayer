@@ -701,7 +701,9 @@ static gboolean
 gtk_media_controller_title_scroll(gpointer user_data){
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
-  if(!self->container || !gtk_widget_get_parent(GTK_WIDGET(self->container))) return TRUE;
+  if(!self || !self->title_scroll || !self->container || !gtk_widget_get_parent(GTK_WIDGET(self->container))) return TRUE;
+
+  if(!gtk_widget_is_visible(GTK_WIDGET(self->container)) || !gtk_widget_is_visible(GTK_WIDGET(self->title_scroll))) return TRUE;
 
   if(self->scroll_timer > 0){
     self->scroll_timer--;
