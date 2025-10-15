@@ -15,6 +15,8 @@
 ## Building this module
 
 ```bash
+git clone https://github.com/otaviojr/waybar_mediaplayer.git waybar_mediaplayer
+cd waybar_mediaplayer
 meson setup build
 meson compile -C build
 cp build/waybar_mediaplayer.so /home/<user>/.config/waybar/scripts
