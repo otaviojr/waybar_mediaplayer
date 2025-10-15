@@ -1,7 +1,7 @@
 # Waybar Media Player CFFI module
 
 <p align="center">
-  <img src="https://github.com/otaviojr/waybar_mediaplayer/blob/master/docs/example.png" alt="Example">
+  <img src="https://otaviojr.github.io/waybar_mediaplayer/docs/example.png" alt="Example">
 </p>
 
 * Support for multiple players
