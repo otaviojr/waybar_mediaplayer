@@ -680,6 +680,8 @@ gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer u
           if(media_player->length <= 0) return FALSE;
         }
 
+        //printf("Position [%ld/%ld]\n", pos, media_player->length);
+ 
         guint64 por = (pos*100)/media_player->length;
         guint64 bar_width = (width*por)/100;
 
