@@ -12,6 +12,13 @@
 
 # Usage
 
+## Cloning repository
+
+```bash
+git clone https://github.com/otaviojr/waybar_mediaplayer.git waybar_mediaplayer
+cd waybar_mediaplayer
+```
+
 ## Building this module
 
 ```bash
