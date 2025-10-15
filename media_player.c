@@ -103,6 +103,9 @@ media_player_add_player_by_name(PlayerctlPlayerManager* player_manager, Playerct
     if(callbacks->on_exit)
       g_signal_connect(player, "exit", G_CALLBACK(callbacks->on_exit), user_data);
 
+    if(callbacks->on_properties)
+      g_signal_connect(player, "properties-changed", G_CALLBACK(callbacks->on_properties), user_data);
+
     playerctl_player_manager_manage_player(player_manager, player);
   } 
 }

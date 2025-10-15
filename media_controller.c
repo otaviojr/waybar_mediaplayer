@@ -473,6 +473,15 @@ gtk_media_controller_on_meta(PlayerctlPlayer* player, GVariant* metadata, gpoint
 }
 
 static void 
+gtk_media_controller_on_properties_changed(PlayerctlPlayer *player,
+                                                       GVariant *changed_properties,
+                                                       GStrv invalidated_properties,
+                                                       gpointer user_data) {
+
+     printf("gtk_media_controller_on_properties_changed entered\n");
+}
+
+static void 
 gtk_media_controller_on_seeked(PlayerctlPlayer* player, gint64 position, gpointer user_data){
   gint64 sec = position/1000000;
   printf("gtk_media_controller_on_seek = %ld\n", sec);
@@ -519,6 +528,7 @@ gtk_media_controller_on_name_added(PlayerctlPlayerManager* player_manager, Playe
 
   MediaPlayerCallbacks callbacks = {
     .on_playback_status = gtk_media_controller_on_playback_status,
+    .on_properties = gtk_media_controller_on_properties_changed,
     .on_meta = gtk_media_controller_on_meta,
     .on_seeked = gtk_media_controller_on_seeked,
     .on_exit = gtk_media_controller_on_exit,
@@ -546,6 +556,7 @@ gtk_media_controller_constructed(GObject* object)
 
   MediaPlayerCallbacks callbacks = {
     .on_playback_status = gtk_media_controller_on_playback_status,
+    .on_properties = gtk_media_controller_on_properties_changed,
     .on_meta = gtk_media_controller_on_meta,
     .on_seeked = gtk_media_controller_on_seeked,
     .on_exit = gtk_media_controller_on_exit,

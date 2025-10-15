@@ -36,6 +36,7 @@ typedef struct _MediaPlayerCallbacks {
   void (*on_seeked)(PlayerctlPlayer*, gint64, gpointer);
   void (*on_meta)(PlayerctlPlayer*, GVariant*, gpointer);
   void (*on_exit)(PlayerctlPlayer*, gpointer);
+  void (*on_properties)(PlayerctlPlayer*, GVariant*, GStrv, gpointer);
 } MediaPlayerCallbacks;
 
 typedef struct _GtkMediaPlayer {
