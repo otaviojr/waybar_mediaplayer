@@ -186,7 +186,7 @@ position_update_timer_callback(gpointer user_data)
   gdouble elapsed_seconds = g_timer_elapsed(self->position_timer, NULL);
   gint64 estimated_position = self->last_known_position + (gint64)(elapsed_seconds * 1000000);
   
-  if (abs(estimated_position - self->position) > 100000) {
+  if (llabs(estimated_position - self->position) > 100000) {
     self->position = estimated_position;
     g_object_notify_by_pspec(G_OBJECT(self), 
       g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
@@ -421,6 +421,8 @@ on_position_query_complete(GObject *source_object,
         if (value && g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
             gint64 new_position = g_variant_get_int64(value);
             
+            g_debug("on_position_query_complete: %ld", new_position);
+
             if (self->position != new_position) {
                 self->position = new_position;
                 self->last_known_position = new_position;
@@ -448,6 +450,7 @@ on_position_query_complete(GObject *source_object,
 static void
 query_position_async(GMprisMediaPlayer *self)
 {
+    g_dbus_proxy_set_cached_property(self->player_proxy, "Position", NULL);
     g_dbus_proxy_call(self->player_proxy,
                      "org.freedesktop.DBus.Properties.Get",
                      g_variant_new("(ss)", IFACE_PLAYER, "Position"),
@@ -683,7 +686,7 @@ on_seeked(GDBusConnection *connection,
           gpointer user_data) {
 
   GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(user_data);
-  
+ 
   gint64 new_position = 0;
   g_variant_get(parameters, "(x)", &new_position);
   

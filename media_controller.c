@@ -62,8 +62,6 @@ struct _GtkMediaController
   //PlayerctlPlayer* current_player;
   //GList* media_players;
 
-  gint unavailable_timeout;
-
   GtkMediaControllerState state;
 };
 
@@ -169,10 +167,6 @@ gtk_media_controller_finalize(GObject * object)
   self->state = GTK_MEDIA_CONTROLLER_STATE_STOPPED;
 
   g_source_remove(self->scroll_timeout);
-
-  if(self->unavailable_timeout > 0){
-    g_source_remove(self->unavailable_timeout);
-  }
 
   if (self->config){
     g_free(self->config->btn_play);
@@ -383,14 +377,15 @@ gtk_media_controller_player_add(GtkMediaController* self, GMprisMediaPlayer* pla
 
 static void 
 gtk_media_controller_select_next_player(GtkMediaController* self, GMprisMediaPlayer* player) {
+
   if(player){
     GList* item = g_list_find_custom(self->media_players, player, g_mpris_media_player_compare);
     if(item){
       GMprisMediaPlayer* next_player = NULL;
       for(GList* next = item->next; next; next = next->next){
-        GMprisMediaPlayer* player = (GMprisMediaPlayer*)next->data;
-        if(g_is_mpris_media_player_available(player)) {
-          next_player = player;
+        GMprisMediaPlayer* p = (GMprisMediaPlayer*)next->data;
+        if(g_is_mpris_media_player_available(p)) {
+          next_player = p;
           break;
         }
       }
@@ -406,13 +401,15 @@ gtk_media_controller_select_next_player(GtkMediaController* self, GMprisMediaPla
   if(item){
     GMprisMediaPlayer* next_player = NULL;
     for(GList* next = item; next; next = next->next){
-      GMprisMediaPlayer* player = (GMprisMediaPlayer*)next->data;
-      if(g_is_mpris_media_player_available(player)) {
-        next_player = player;
+      GMprisMediaPlayer* p = (GMprisMediaPlayer*)next->data;
+      if(g_is_mpris_media_player_available(p)) {
+        next_player = p;
         break;
       }
     }
+
     gtk_media_controller_set_player(self, next_player);
+
   }
   return;
 }
@@ -421,19 +418,18 @@ static void
 gtk_media_controller_player_remove(GtkMediaController* self, GMprisMediaPlayer* player) {
   printf("gtk_media_controller_player_remove entered\n");
 
-  if(self->unavailable_timeout > 0){
-    g_source_remove(self->unavailable_timeout);
-    self->unavailable_timeout = 0;
-  }  
-
   if(self->media_players != NULL){
     GList* item = g_list_find_custom(g_list_first(self->media_players), player, g_mpris_media_player_compare);
     if(item != NULL){
-      self->media_players = g_list_remove_link(self->media_players, item);
       gtk_media_controller_select_next_player(self, player);
+      self->media_players = g_list_remove_link(self->media_players, item);
       g_list_free_full(item, g_object_unref);
     }
   } else {
+      gchar* iface = NULL;
+      g_object_get(G_OBJECT(player), "iface", &iface, NULL);
+      g_warning("Media player not found to remove - %s", iface);
+      g_free(iface);
       gtk_media_controller_set_player(self, NULL);
   }
 }
@@ -443,7 +439,12 @@ gtk_media_controller_on_player_property_changed(GMprisMediaPlayer* player, gpoin
   printf("gtk_media_controller_on_player_property_changed entered\n");
 
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+
   gtk_media_controller_update(self);
+
+  if(!g_is_mpris_media_player_available(player)){
+    gtk_media_controller_select_next_player(self, player);
+  }
 
   printf("gtk_media_controller_on_player_property_changed exited\n");
 }
@@ -592,7 +593,6 @@ gtk_media_controller_init(GtkMediaController * self)
   printf("Initializing player\n");
   self->media_players = NULL;
   self->current_player = NULL;
-  self->unavailable_timeout = 0;
 }
 
 void static 

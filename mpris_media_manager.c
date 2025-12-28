@@ -81,6 +81,7 @@ g_mpris_media_manager_set_property(GObject * object, guint prop_id, const GValue
     GParamSpec * pspec)
 {
   GMprisMediaManager *self = G_MPRIS_MEDIA_MANAGER(object);
+  (void)self;
 
   switch (prop_id) {
 //    case GTK_MEDIA_CONTROLLER_PROP_STATE:
@@ -127,8 +128,9 @@ g_mpris_media_manager_finalize(GObject * object)
 static void
 g_mpris_media_manager_constructed(GObject* object)
 {
-  GMprisMediaManager *self = G_MPRIS_MEDIA_MANAGER(object);
   g_debug("g_mpris_media_manager_constructed entered");
+  GMprisMediaManager *self = G_MPRIS_MEDIA_MANAGER(object);
+  (void)self;
   g_debug("g_mpris_media_manager_constructed exited");
 }
 
