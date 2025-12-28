@@ -15,6 +15,8 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define G_LOG_DOMAIN "waybarmediaplayer.media-controller"
+
 #include <math.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
@@ -23,11 +25,11 @@
 #include <pango/pango.h>
 #include <glib-object.h>
 #include <glib.h>
-#include <playerctl.h>
-#include <playerctl-player-name.h>
 
 #include "media_controller.h"
-#include "media_player.h"
+
+#include "mpris_media_manager.h"
+#include "mpris_media_player.h"
 
 struct _GtkMediaController
 {
@@ -50,9 +52,15 @@ struct _GtkMediaController
   GtkWindow* tooltip_window;
   GtkImage* tooltip_image;
 
-  PlayerctlPlayerManager* player_manager;
-  PlayerctlPlayer* current_player;
+  /* new MPRIS functions */
+  GMprisMediaManager* media_manager;
+  GMprisMediaPlayer* current_player;
   GList* media_players;
+
+  /* old playerctl functions */
+  //PlayerctlPlayerManager* player_manager;
+  //PlayerctlPlayer* current_player;
+  //GList* media_players;
 
   gint unavailable_timeout;
 
@@ -68,8 +76,9 @@ struct _GtkMediaControllerClass
 
 enum
 {
-  GTK_MEDIA_CONTROLLER_PROP_0,
+GTK_MEDIA_CONTROLLER_PROP_0,
   GTK_MEDIA_CONTROLLER_PROP_STATE,
+  GTK_MEDIA_CONTROLLER_PROP_CONFIG,
   GTK_MEDIA_CONTROLLER_PROP_LAST
 };
 
@@ -140,6 +149,11 @@ gtk_media_controller_set_property(GObject * object, guint prop_id, const GValue 
                       0, self->state);
       }
       break;
+
+    case GTK_MEDIA_CONTROLLER_PROP_CONFIG:
+      self->config = g_value_get_pointer(value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -149,7 +163,7 @@ gtk_media_controller_set_property(GObject * object, guint prop_id, const GValue 
 static void
 gtk_media_controller_finalize(GObject * object)
 {
-  printf("gtk_media_controller_finalize\n");
+  printf("gtk_media_controller_finalize entered\n");
   GtkMediaController *self = GTK_MEDIA_CONTROLLER(object);
 
   self->state = GTK_MEDIA_CONTROLLER_STATE_STOPPED;
@@ -165,17 +179,18 @@ gtk_media_controller_finalize(GObject * object)
     g_free(self->config->btn_pause);
     g_free(self->config->btn_next);
     g_free(self->config->btn_prev);
+    g_free(self->config->ignored_players);
     g_free(self->config);
   }
 
   if (self->media_players) {
-    g_list_free_full(self->media_players, gtk_media_player_destroy);
+    g_list_free_full(self->media_players, g_object_unref);
     self->media_players = NULL;
   }
 
-  if(self->player_manager){
-    g_object_unref(self->player_manager);
-    self->player_manager = NULL;
+  if(self->media_manager){
+    g_object_unref(self->media_manager);
+    self->media_manager = NULL;
   }
 
   g_object_unref(self->container);
@@ -184,7 +199,7 @@ gtk_media_controller_finalize(GObject * object)
   G_OBJECT_CLASS
       (gtk_media_controller_parent_class)->finalize(object);
 
-  printf("gtk_media_controller_finalized\n");
+  printf("gtk_media_controller_finalized exited\n");
 }
 
 static void 
@@ -196,9 +211,17 @@ gtk_media_controller_update(GtkMediaController* self) {
   guint pos = 0;
   guint size = 0;
   for(struct {int idx; GList* item; } loop = {0, g_list_first(self->media_players)}; loop.item; loop.item = loop.item->next){
-    GtkMediaPlayer* media_player = (GtkMediaPlayer*)loop.item->data;
-    if(media_player->available) { size ++; loop.idx++; } else { continue; };
-    if(media_player->player == self->current_player) pos = loop.idx; 
+    GMprisMediaPlayer* player = (GMprisMediaPlayer*)loop.item->data;
+
+    if(g_is_mpris_media_player_available(player)) { 
+      size ++; loop.idx++; 
+    } else { 
+      continue; 
+    };
+
+    if(g_mpris_media_player_compare(player, self->current_player) == 0){
+      pos = loop.idx; 
+    }
   }
 
   if(self->media_players == NULL || size == 0){
@@ -211,7 +234,7 @@ gtk_media_controller_update(GtkMediaController* self) {
       gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->container));
       gtk_widget_show_all(GTK_WIDGET(self->container));
     }
-  }
+}
 
   if(self->player_text != NULL){
     if(self->current_player !=NULL){
@@ -225,23 +248,12 @@ gtk_media_controller_update(GtkMediaController* self) {
  
   if(self->title){
     if(self->current_player){
-      GError* err = NULL;
-
-      gchar* artist = playerctl_player_get_artist(self->current_player, &err);
-      if(err != NULL){
-        artist = NULL;
-        printf("Error getting artist: %s\n", err->message);
-        g_clear_error(&err);
-        err = NULL;
-      }
-
-      gchar* title = playerctl_player_get_title(self->current_player, &err);
-      if(err != NULL){
-        title = NULL;
-        printf("Error getting title: %s\n", err->message);
-        g_clear_error(&err);
-        err = NULL;
-      }
+      gchar* artist = NULL;
+      gchar* title = NULL;
+      g_object_get(G_OBJECT(self->current_player), 
+                    "artist", &artist,
+                    "title", &title,
+                    NULL); 
 
       if((artist && strlen(artist) > 0) || (title && strlen(title) > 0)){
         gint mem_size = 0;
@@ -263,7 +275,7 @@ gtk_media_controller_update(GtkMediaController* self) {
         else
           gtk_label_set_text(self->title, "No Name");
 
-       g_free(final_title);
+        g_free(final_title);
       } else {
         gtk_label_set_text(self->title, "No Media");
       }
@@ -281,31 +293,33 @@ gtk_media_controller_update(GtkMediaController* self) {
     }
 
     if(self->media_players && self->current_player){
-      GList* item = g_list_find_custom(g_list_first(self->media_players), self->current_player, gtk_media_player_compare);
+      GList* item = g_list_find_custom(g_list_first(self->media_players), self->current_player, g_mpris_media_player_compare);
       if(item){
-        GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
-        if(media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING){
+        GMprisMediaPlayer* player = (GMprisMediaPlayer*)item->data;
+
+        GMprisMediaPlayerState state;
+        g_object_get(G_OBJECT(player), "state", &state, NULL); 
+
+        if(state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING){
           gtk_button_set_label(self->btn_play, self->config->btn_pause);
         } else {
           gtk_button_set_label(self->btn_play, self->config->btn_play);
         }
 
-        GValue val = G_VALUE_INIT;
-        g_value_init(&val, G_TYPE_BOOLEAN);
-        g_object_get_property(G_OBJECT(media_player->player), "can-go-previous", &val);
-        if(g_value_get_boolean(&val) == FALSE)
+        gboolean val = FALSE;
+        g_object_get(G_OBJECT(player), "can-go-previous", &val, NULL);
+        printf("can-go-previous => %s\n", (val ? "TRUE" : "FALSE"));
+        if(!val)
           gtk_widget_hide(GTK_WIDGET(self->btn_prev));
         else
           gtk_widget_show(GTK_WIDGET(self->btn_prev));
-        g_value_unset(&val);
 
-        g_object_get_property(G_OBJECT(media_player->player), "can-go-next", &val);
-        if(g_value_get_boolean(&val) == FALSE)
+        g_object_get(G_OBJECT(player), "can-go-next", &val, NULL);
+        printf("can-go-next => %s\n", (val ? "TRUE" : "FALSE"));
+        if(!val)
           gtk_widget_hide(GTK_WIDGET(self->btn_next));
         else
           gtk_widget_show(GTK_WIDGET(self->btn_next));
-        g_value_unset(&val);
-
       }
     }
   }
@@ -327,44 +341,60 @@ gtk_media_controller_reset_title_scroll(GtkMediaController* self, gboolean rever
 }
 
 static void
-gtk_media_controller_set_player(GtkMediaController* self, PlayerctlPlayer* player){
-  if(self->current_player != NULL && player != NULL && self->current_player != player){
+gtk_media_controller_set_player(GtkMediaController* self, GMprisMediaPlayer* player){
+  if(self->current_player != NULL && player != NULL && g_mpris_media_player_compare(self->current_player,player) != 0){
     gtk_media_controller_reset_title_scroll(self, FALSE);
   }
   self->current_player = player;
+
+  gchar* iface; 
+  g_object_get(G_OBJECT(player), "iface", &iface, NULL);
+  printf("Player selected: %s\n", iface);
+  g_free(iface);
 }
 
 static void 
-gtk_media_controller_player_add(GtkMediaController* self, PlayerctlPlayer* player){
+gtk_media_controller_player_add(GtkMediaController* self, GMprisMediaPlayer* player){
   printf("gtk_media_controller_player_add entered\n");
-  GList* item = g_list_find_custom(g_list_first(self->media_players), player, gtk_media_player_compare);
+
+  GList* item = g_list_find_custom(g_list_first(self->media_players), player, g_mpris_media_player_compare);
   if(item == NULL){
-    GtkMediaPlayer* media_player = gtk_media_player_new(self, player); 
-    self->media_players = g_list_append(self->media_players, media_player);
-    printf("New player added to media controller %ld\n", (gint64)media_player->player);
-    if((media_player->available && self->current_player == NULL) || media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING)
-      gtk_media_controller_set_player(self, media_player->player);
+    self->media_players = g_list_append(self->media_players, player);
+
+    printf("New player added to media controller \n");
+
+    GMprisMediaPlayerState state;
+    g_object_get(G_OBJECT(player), "state", &state, NULL);
+
+    if((g_is_mpris_media_player_available(player) && self->current_player == NULL) || state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING)
+      gtk_media_controller_set_player(self, player);
   } else {
-    GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
-    media_player->available = TRUE;
-    gtk_media_controller_set_player(self, media_player->player);
+
+    GMprisMediaPlayer* player = (GMprisMediaPlayer*)item->data;
+
+    GMprisMediaPlayerState state;
+    g_object_get(G_OBJECT(player), "state", &state, NULL);
+
+    if((g_is_mpris_media_player_available(player) && self->current_player == NULL) || state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING)
+      gtk_media_controller_set_player(self, player);
   }
   printf("gtk_media_controller_player_add exited\n");
 }
 
 static void 
-gtk_media_controller_select_next_player(GtkMediaController* self, PlayerctlPlayer* player) {
+gtk_media_controller_select_next_player(GtkMediaController* self, GMprisMediaPlayer* player) {
   if(player){
-    GList* item = g_list_find_custom(self->media_players, player, gtk_media_player_compare);
+    GList* item = g_list_find_custom(self->media_players, player, g_mpris_media_player_compare);
     if(item){
-      PlayerctlPlayer* next_player = NULL;
+      GMprisMediaPlayer* next_player = NULL;
       for(GList* next = item->next; next; next = next->next){
-        GtkMediaPlayer* media_player = (GtkMediaPlayer*)next->data;
-        if(media_player->available) {
-          next_player = media_player->player;
+        GMprisMediaPlayer* player = (GMprisMediaPlayer*)next->data;
+        if(g_is_mpris_media_player_available(player)) {
+          next_player = player;
           break;
         }
       }
+
       if(next_player != NULL){
         gtk_media_controller_set_player(self, next_player);
         return;
@@ -374,11 +404,11 @@ gtk_media_controller_select_next_player(GtkMediaController* self, PlayerctlPlaye
   
   GList* item = g_list_first(self->media_players);
   if(item){
-    PlayerctlPlayer* next_player = NULL;
+    GMprisMediaPlayer* next_player = NULL;
     for(GList* next = item; next; next = next->next){
-      GtkMediaPlayer* media_player = (GtkMediaPlayer*)next->data;
-      if(media_player->available) {
-        next_player = media_player->player;
+      GMprisMediaPlayer* player = (GMprisMediaPlayer*)next->data;
+      if(g_is_mpris_media_player_available(player)) {
+        next_player = player;
         break;
       }
     }
@@ -388,7 +418,7 @@ gtk_media_controller_select_next_player(GtkMediaController* self, PlayerctlPlaye
 }
 
 static void 
-gtk_media_controller_player_remove(GtkMediaController* self, PlayerctlPlayer* player) {
+gtk_media_controller_player_remove(GtkMediaController* self, GMprisMediaPlayer* player) {
   printf("gtk_media_controller_player_remove entered\n");
 
   if(self->unavailable_timeout > 0){
@@ -397,11 +427,11 @@ gtk_media_controller_player_remove(GtkMediaController* self, PlayerctlPlayer* pl
   }  
 
   if(self->media_players != NULL){
-    GList* item = g_list_find_custom(g_list_first(self->media_players), player, gtk_media_player_compare);
+    GList* item = g_list_find_custom(g_list_first(self->media_players), player, g_mpris_media_player_compare);
     if(item != NULL){
       self->media_players = g_list_remove_link(self->media_players, item);
       gtk_media_controller_select_next_player(self, player);
-      g_list_free_full(item, gtk_media_player_destroy);
+      g_list_free_full(item, g_object_unref);
     }
   } else {
       gtk_media_controller_set_player(self, NULL);
@@ -409,161 +439,112 @@ gtk_media_controller_player_remove(GtkMediaController* self, PlayerctlPlayer* pl
 }
 
 static void 
-gtk_media_controller_player_unavailable(gpointer user_data){
-  GtkMediaPlayer* media_player = (GtkMediaPlayer*)user_data;
-  media_player->available = FALSE;
-  media_player->parent->unavailable_timeout = 0;
-  gtk_media_controller_select_next_player(media_player->parent, media_player->player);
-  gtk_media_controller_update(media_player->parent);
+gtk_media_controller_on_player_property_changed(GMprisMediaPlayer* player, gpointer user_data) {
+  printf("gtk_media_controller_on_player_property_changed entered\n");
+
+  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+  gtk_media_controller_update(self);
+
+  printf("gtk_media_controller_on_player_property_changed exited\n");
 }
 
 static void 
-gtk_media_controller_mark_player_unavailable(GtkMediaController* self, GtkMediaPlayer* media_player, gint sec){
-  self->unavailable_timeout = g_timeout_add_once(sec, gtk_media_controller_player_unavailable, media_player);
-}
+gtk_media_controller_on_player_state_changed(GMprisMediaPlayer* player, gpointer user_data) {
+  printf("gtk_media_controller_on_player_state_changed entered\n");
 
-static void 
-gtk_media_controller_on_playback_status(PlayerctlPlayer* player, PlayerctlPlaybackStatus status, gpointer user_data) {
-  printf("gtk_media_controller_on_playback_status entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
-  switch(status){
-    case PLAYERCTL_PLAYBACK_STATUS_PLAYING:
-    case PLAYERCTL_PLAYBACK_STATUS_PAUSED:
-      printf("Status: play/pause\n");
-      gtk_media_controller_player_add(self,player);
-      gtk_media_controller_set_player(self,player);
-      if(self->unavailable_timeout > 0){
-        g_source_remove(self->unavailable_timeout);
-        self->unavailable_timeout = 0;
+  GMprisMediaPlayerState state;
+  g_object_get(G_OBJECT(player), "state", &state, NULL);
+
+  if(g_is_mpris_media_player_available(player) && 
+    state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING)
+      gtk_media_controller_set_player(self, player); 
+
+  printf("gtk_media_controller_on_player_state_changed exited\n");
+}
+
+
+static void mpris_on_player_added(GMprisMediaManager* manager, GMprisMediaPlayer* player, gpointer user_data){
+  printf("mpris_on_player_added entered\n");
+
+  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+
+  //TODO: Improve this code somewhere else... create the list when reading the
+  //configuration file...
+  if(self->config && self->config->ignored_players && strlen(self->config->ignored_players) > 0) {
+    gchar* iface = NULL;
+    g_object_get(G_OBJECT(player), "iface", &iface, NULL);
+
+    if (iface) {
+      gchar* iface_lower = g_ascii_strdown(iface, -1);
+      gchar* ignored_players_lower = g_ascii_strdown(self->config->ignored_players, -1);
+
+      gchar** ignored_list = g_strsplit(ignored_players_lower, ",", -1);
+      gboolean should_ignore = FALSE;
+
+      printf("Searching %s in %s\n", ignored_players_lower, iface_lower);
+
+      for (gint i = 0; ignored_list[i] != NULL; i++) {
+        gchar* trimmed_name = g_strstrip(g_strdup(ignored_list[i]));
+
+        if (strlen(trimmed_name) > 0 && strstr(iface, trimmed_name) != NULL) {
+          should_ignore = TRUE;
+          printf("Ignoring player with interface: %s (matches ignored pattern: %s)\n", iface, trimmed_name);
+          g_free(trimmed_name);
+          break;
+        }
+        g_free(trimmed_name);
       }
-      break;
 
-    case PLAYERCTL_PLAYBACK_STATUS_STOPPED:
-      printf("Status: stop\n");
-      break;
-  }
+      g_free(ignored_players_lower);
+      g_strfreev(ignored_list);
+      g_free(iface_lower);
+      g_free(iface);
 
-  GList* item = g_list_find_custom(self->media_players, player, gtk_media_player_compare);
-  if(item != NULL){
-    GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
-    media_player->status = status;
-    if(status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-      gtk_media_controller_mark_player_unavailable(self, media_player, 5000);
+      // If player should be ignored, return early without adding it
+      if (should_ignore) {
+        printf("mpris_on_player_added exited early (player ignored)\n");
+        return;
+      }
     }
   }
-  gtk_media_controller_update(self);
-}
 
-static void 
-gtk_media_controller_on_meta(PlayerctlPlayer* player, GVariant* metadata, gpointer user_data){
-  printf("gtk_media_controller_on_meta entered\n");
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+  g_object_ref(player);
 
-  guint64 length = gtk_media_player_get_length(player);
+  g_signal_connect(player, "property-changed", 
+        G_CALLBACK(gtk_media_controller_on_player_property_changed), self);
 
-  GList* item = g_list_find_custom(g_list_first(self->media_players), player, gtk_media_player_compare);
-  if(item != NULL){
-    GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
-    media_player->length = length;
-    gtk_media_controller_set_player(self, player);
-  }
+  g_signal_connect(player, "state-changed",
+        G_CALLBACK(gtk_media_controller_on_player_state_changed), self);
 
-  gtk_media_controller_update(self);
-}
-
-static void 
-gtk_media_controller_on_properties_changed(PlayerctlPlayer *player,
-                                                       GVariant *changed_properties,
-                                                       GStrv invalidated_properties,
-                                                       gpointer user_data) {
-
-     printf("gtk_media_controller_on_properties_changed entered\n");
-}
-
-static void 
-gtk_media_controller_on_seeked(PlayerctlPlayer* player, gint64 position, gpointer user_data){
-  gint64 sec = position/1000000;
-  printf("gtk_media_controller_on_seek = %ld\n", sec);
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  gtk_media_controller_player_add(self,player);
-  gtk_media_controller_set_player(self,player);
-  if(sec == 0){
-    gtk_media_controller_reset_title_scroll(self, FALSE);
-  }
-  gtk_media_controller_update(self);
-}
-
-static void 
-gtk_media_controller_on_exit(PlayerctlPlayer* player, gpointer user_data){
-  printf("gtk_media_controller_on_exit entered\n");
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  if(self->current_player == player){
-    gtk_media_controller_set_player(self, NULL);
-  }
-  gtk_media_controller_update(self);
-}
-
-static void 
-gtk_media_controller_on_player_added(PlayerctlPlayerManager* player_manager, PlayerctlPlayer* player, gpointer user_data) {
-  printf("gtk_media_controller_on_player_added entered\n");
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_add(self, player);
   gtk_media_controller_update(self);
+
+  printf("mpris_on_player_added exited\n");
 }
 
-static void 
-gtk_media_controller_on_player_removed(PlayerctlPlayerManager* player_manager, PlayerctlPlayer* player, gpointer user_data) {
-  printf("gtk_media_controller_on_player_removed entered\n");
+static void mpris_on_player_removed(GMprisMediaManager* manager, GMprisMediaPlayer* player, gpointer user_data){
+  printf("mpris_on_player_removed entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_remove(self,player);
   gtk_media_controller_update(self);
-}
-
-static void 
-gtk_media_controller_on_name_added(PlayerctlPlayerManager* player_manager, PlayerctlPlayerName* name, gpointer user_data) {
-  printf("gtk_media_controller_on_name_added entered\n");
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  GError* err = NULL;
-
-  MediaPlayerCallbacks callbacks = {
-    .on_playback_status = gtk_media_controller_on_playback_status,
-    .on_properties = gtk_media_controller_on_properties_changed,
-    .on_meta = gtk_media_controller_on_meta,
-    .on_seeked = gtk_media_controller_on_seeked,
-    .on_exit = gtk_media_controller_on_exit,
-  };
-  media_player_add_player_by_name(player_manager, name, &callbacks, &err, self);
-}
-
-static void 
-gtk_media_controller_on_name_removed(PlayerctlPlayerManager* player_manager, PlayerctlPlayerName* name, gpointer user_data) {
-  printf("gtk_media_controller_on_name_removed entered\n");
+  printf("mpris_on_player_removed exited\n");
 }
 
 static void
 gtk_media_controller_constructed(GObject* object)
 {
-  GtkMediaController *self = GTK_MEDIA_CONTROLLER(object);
   printf("gtk_media_controller_constructed\n");
+  GtkMediaController *self = GTK_MEDIA_CONTROLLER(object);
 
-  MediaPlayerManagerCallbacks manager_callbacks = {
-    .on_player_added = gtk_media_controller_on_player_added,
-    .on_player_removed = gtk_media_controller_on_player_removed,
-    .on_name_added = gtk_media_controller_on_name_added,
-    .on_name_removed = gtk_media_controller_on_name_removed
-  };
+  self->media_manager = g_mpris_media_manager_new();
 
-  MediaPlayerCallbacks callbacks = {
-    .on_playback_status = gtk_media_controller_on_playback_status,
-    .on_properties = gtk_media_controller_on_properties_changed,
-    .on_meta = gtk_media_controller_on_meta,
-    .on_seeked = gtk_media_controller_on_seeked,
-    .on_exit = gtk_media_controller_on_exit,
-  };
+  g_signal_connect(self->media_manager, "player-added", G_CALLBACK(mpris_on_player_added), self);
 
-  self->player_manager = media_player_new(&manager_callbacks, self);
-  media_player_init(self->player_manager, &callbacks, self);
+  g_signal_connect(self->media_manager, "player-removed", G_CALLBACK(mpris_on_player_removed), self);
+
+  g_mpris_media_manager_start(self->media_manager);
 
   printf("gtk_media_controller_constructed fnished\n");
 }
@@ -579,10 +560,15 @@ gtk_media_controller_class_init(GtkMediaControllerClass * klass)
   gobject_class->constructed = gtk_media_controller_constructed;
 
   gtk_media_controller_param_specs[GTK_MEDIA_CONTROLLER_PROP_STATE] =
-        g_param_spec_enum ("state", "state",
+        g_param_spec_enum ("state", "State",
         "Media Controller current state", GTK_TYPE_MEDIA_CONTROLLER_STATE,
         GTK_MEDIA_CONTROLLER_STATE_IDLE,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+
+  gtk_media_controller_param_specs[GTK_MEDIA_CONTROLLER_PROP_CONFIG] =
+        g_param_spec_pointer("config", "Config",
+        "Media Player Configuration",
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
   gtk_media_controller_signals[GTK_MEDIA_CONTROLLER_SIGNAL_STATE_CHANGED] =
     g_signal_new("media-state-changed",
@@ -604,7 +590,6 @@ static void
 gtk_media_controller_init(GtkMediaController * self)
 {
   printf("Initializing player\n");
-  self->state = GTK_MEDIA_CONTROLLER_STATE_IDLE;
   self->media_players = NULL;
   self->current_player = NULL;
   self->unavailable_timeout = 0;
@@ -616,12 +601,7 @@ gtk_media_controller_on_title_bp(GtkLabel* title, GdkEventButton* event, gpointe
 
   if(event->button == 1){
     if(self->current_player) {
-      GError* err = NULL;
-      playerctl_player_play_pause(self->current_player, &err);
-      if(err != NULL) {
-        printf("Error play/pause current player\n");
-        g_clear_error(&err);
-      }
+      g_mpris_media_player_play_pause(self->current_player);
     }
   }
 }
@@ -644,8 +624,9 @@ static void
 gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
   printf("gtk_media_controller_on_prev_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  GError* err = NULL;
-  playerctl_player_previous(self->current_player, &err);
+
+  g_mpris_media_player_previous(self->current_player);
+
   gtk_media_controller_reset_title_scroll(self, FALSE);
 }
 
@@ -653,16 +634,14 @@ static void
 gtk_media_controller_on_play_click(GtkButton* btn, gpointer user_data) {
   printf("gtk_media_controller_on_play_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  GError* err = NULL;
-  playerctl_player_play_pause(self->current_player, &err);
+  g_mpris_media_player_play_pause(self->current_player);
 }
 
 static void 
 gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_data) {
   printf("gtk_media_controller_on_next_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  GError* err = NULL;
-  playerctl_player_next(self->current_player, &err);
+  g_mpris_media_player_next(self->current_player);
   gtk_media_controller_reset_title_scroll(self, FALSE);
 }
 
@@ -676,34 +655,33 @@ gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer u
     gint width = gtk_widget_get_allocated_width(widget);
     gint height = gtk_widget_get_allocated_height(widget);
 
-    GList* item = g_list_find_custom(g_list_first(self->media_players), self->current_player, gtk_media_player_compare);
+    GList* item = g_list_find_custom(g_list_first(self->media_players), self->current_player, g_mpris_media_player_compare);
     if(item){
-      GtkMediaPlayer* media_player = (GtkMediaPlayer*)item->data;
-      if(media_player->status == PLAYERCTL_PLAYBACK_STATUS_PLAYING || 
-        media_player->status == PLAYERCTL_PLAYBACK_STATUS_PAUSED){
+      GMprisMediaPlayer* player = (GMprisMediaPlayer*)item->data;
 
-        GError* err = NULL;
-        guint64 pos = playerctl_player_get_position(self->current_player, &err);
-        if(err != NULL) pos=0;
+      GMprisMediaPlayerState state;
+      g_object_get(G_OBJECT(player), "state", &state, NULL);
 
-        if(media_player->length <= 0) {
-          media_player->length = gtk_media_player_get_length(self->current_player);
-          if(media_player->length <= 0) return FALSE;
+      if(state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING || 
+         state == G_MPRIS_MEDIA_PLAYER_STATE_PAUSED){
+
+        gint64 pos = 0;
+        gint64 length = 0;
+        g_object_get(G_OBJECT(player),"position", &pos, "length", &length, NULL);
+
+        if(length > 0){
+          guint64 por = (pos*100)/length;
+          guint64 bar_width = (width*por)/100;
+
+          GdkRGBA color;
+          gtk_style_context_get_color(context, GTK_STATE_FLAG_NORMAL, &color);
+
+          cairo_set_line_width(cr, 2.0);
+          cairo_set_source_rgba(cr, color.red,color.green,color.blue, color.alpha);
+          cairo_move_to(cr,0,height);
+          cairo_line_to(cr,bar_width,height);
+          cairo_stroke(cr);
         }
-
-        //printf("Position [%ld/%ld]\n", pos, media_player->length);
- 
-        guint64 por = (pos*100)/media_player->length;
-        guint64 bar_width = (width*por)/100;
-
-        GdkRGBA color;
-        gtk_style_context_get_color(context, GTK_STATE_FLAG_NORMAL, &color);
-
-        cairo_set_line_width(cr, 2.0);
-        cairo_set_source_rgba(cr, color.red,color.green,color.blue, color.alpha);
-        cairo_move_to(cr,0,height);
-        cairo_line_to(cr,bar_width,height);
-        cairo_stroke(cr);
       }
     }
   }
@@ -750,10 +728,11 @@ gtk_media_controller_title_scroll(gpointer user_data){
 gboolean
 gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip* tooltip, gpointer user_data){
   printf("gtk_media_controller_on_query_tooltip entered\n");
-  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  GError * err = NULL;
+  
+  //GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+  //GError * err = NULL;
 
-  if(self->current_player){
+  /*if(self->current_player){
     gchar* art_url = playerctl_player_print_metadata_prop(self->current_player, "mpris:artUrl", &err);
     if(err != NULL) return FALSE;
 
@@ -796,7 +775,7 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
       g_free(art_url);
       return FALSE;
     }
-  }
+  }*/
 
   return TRUE;
 }
@@ -804,11 +783,14 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
 GtkMediaController*
 gtk_media_controller_new(MediaPlayerModConfig* config){
   printf("gtk_media_controller_new entered\n");
-  GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, NULL);
 
   if(!config) return NULL;
 
-  self->config = config;
+  GtkMediaController* self = g_object_new(GTK_TYPE_MEDIA_CONTROLLER, 
+                                  "config", config,
+                                  "state", GTK_MEDIA_CONTROLLER_STATE_IDLE,
+                                  NULL);
+
 
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");

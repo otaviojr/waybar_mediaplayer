@@ -1,10 +1,12 @@
+#define G_LOG_DOMAIN "waybarmediaplayer.main"
+
+#include <glib.h>
 #include <glib-object.h>
-#include <playerctl.h>
 #include <string.h>
 
-#include "glib.h"
 #include "waybar_mediaplayer.h"
 #include "media_controller.h"
+
 
 // This static variable is shared between all instances of this module
 static int instance_count = 0;
@@ -38,6 +40,17 @@ replace_unicode_escapes(const gchar* input) {
     return g_string_free_and_steal(result);
 }
 
+static gchar* replace_string_glib(const gchar* input, const gchar* find, const gchar* replace) {
+    // Create GString from gchar*
+    GString* gstr = g_string_new(input);
+    
+    // Replace all occurrences (0 = no limit)
+    g_string_replace(gstr, find, replace, 0);
+    
+    // Extract gchar* and free GString structure (but not the string data)
+    return g_string_free(gstr, FALSE);
+}
+
 void* 
 wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
@@ -53,10 +66,11 @@ wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config
   config->tooltip = TRUE;
   config->tooltip_image_width = 300;
   config->tooltip_image_height = 300;
-  config->btn_play = "";
-  config->btn_pause="";
-  config->btn_prev="";
-  config->btn_next="";
+  config->btn_play = g_strdup("");
+  config->btn_pause = g_strdup("");
+  config->btn_prev = g_strdup("");
+  config->btn_next = g_strdup("");
+  config->ignored_players = g_strdup("");
 
   for (size_t i = 0; i < config_entries_len; i++) {
     if(strncasecmp("scroll-before-timeout", config_entries[i].key,21)==0){
@@ -84,14 +98,27 @@ wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config
         config->tooltip = FALSE;
       }
     } else if(strncasecmp("btn-play-icon", config_entries[i].key,13)==0){
+      g_free(config->btn_play);
       config->btn_play = replace_unicode_escapes(config_entries[i].value);
     } else if(strncasecmp("btn-pause-icon", config_entries[i].key,14)==0){
+      g_free(config->btn_pause);
       config->btn_pause = replace_unicode_escapes(config_entries[i].value); 
     } else if(strncasecmp("btn-next-icon", config_entries[i].key,13)==0){
+      g_free(config->btn_next);
       config->btn_next = replace_unicode_escapes(config_entries[i].value); 
     } else if(strncasecmp("btn-prev-icon", config_entries[i].key,13)==0){
+      g_free(config->btn_prev);
       config->btn_prev = replace_unicode_escapes(config_entries[i].value); 
-    } else {
+    } else if(strncasecmp("ignored-players", config_entries[i].key,15)==0){
+      g_free(config->ignored_players);
+
+      gchar* ignored_players = g_strdup(config_entries[i].value);
+      ignored_players = replace_string_glib(ignored_players, "\"", ""); 
+      ignored_players = replace_string_glib(ignored_players, "\'", "");
+      ignored_players = replace_string_glib(ignored_players, "\n", ""); 
+
+      config->ignored_players = ignored_players;
+      } else {
       printf("Property '%s' ignored\n", config_entries[i].key);
     }
   }

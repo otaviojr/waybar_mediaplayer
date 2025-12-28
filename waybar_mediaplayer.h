@@ -38,6 +38,7 @@ typedef struct {
   gchar* btn_pause;
   gchar* btn_prev;
   gchar* btn_next;
+  gchar* ignored_players;
 } MediaPlayerModConfig;
 
 

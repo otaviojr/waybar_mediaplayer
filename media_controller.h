@@ -17,7 +17,6 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <playerctl.h>
 
 #include "waybar_mediaplayer.h"
 
