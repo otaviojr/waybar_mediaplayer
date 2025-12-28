@@ -339,12 +339,17 @@ gtk_media_controller_set_player(GtkMediaController* self, GMprisMediaPlayer* pla
   if(self->current_player != NULL && player != NULL && g_mpris_media_player_compare(self->current_player,player) != 0){
     gtk_media_controller_reset_title_scroll(self, FALSE);
   }
+
   self->current_player = player;
 
-  gchar* iface; 
-  g_object_get(G_OBJECT(player), "iface", &iface, NULL);
-  printf("Player selected: %s\n", iface);
-  g_free(iface);
+  if(player != NULL){
+    gchar* iface; 
+    g_object_get(G_OBJECT(player), "iface", &iface, NULL);
+    g_debug("Player selected: %s\n", iface);
+    g_free(iface);
+  } else {
+    g_debug("No next player to be selected.\n");
+  }
 }
 
 static void 
@@ -407,16 +412,14 @@ gtk_media_controller_select_next_player(GtkMediaController* self, GMprisMediaPla
         break;
       }
     }
-
     gtk_media_controller_set_player(self, next_player);
-
   }
   return;
 }
 
 static void 
 gtk_media_controller_player_remove(GtkMediaController* self, GMprisMediaPlayer* player) {
-  printf("gtk_media_controller_player_remove entered\n");
+  g_debug("gtk_media_controller_player_remove entered\n");
 
   if(self->media_players != NULL){
     GList* item = g_list_find_custom(g_list_first(self->media_players), player, g_mpris_media_player_compare);
@@ -432,11 +435,13 @@ gtk_media_controller_player_remove(GtkMediaController* self, GMprisMediaPlayer* 
       g_free(iface);
       gtk_media_controller_set_player(self, NULL);
   }
+  gtk_media_controller_update(self);
+  g_debug("gtk_media_controller_player_remove exit\n");
 }
 
 static void 
 gtk_media_controller_on_player_property_changed(GMprisMediaPlayer* player, gpointer user_data) {
-  printf("gtk_media_controller_on_player_property_changed entered\n");
+  g_debug("gtk_media_controller_on_player_property_changed entered\n");
 
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
@@ -444,14 +449,15 @@ gtk_media_controller_on_player_property_changed(GMprisMediaPlayer* player, gpoin
 
   if(!g_is_mpris_media_player_available(player)){
     gtk_media_controller_select_next_player(self, player);
+    gtk_media_controller_update(self);
   }
 
-  printf("gtk_media_controller_on_player_property_changed exited\n");
+  g_debug("gtk_media_controller_on_player_property_changed exited\n");
 }
 
 static void 
 gtk_media_controller_on_player_state_changed(GMprisMediaPlayer* player, gpointer user_data) {
-  printf("gtk_media_controller_on_player_state_changed entered\n");
+  g_debug("gtk_media_controller_on_player_state_changed entered\n");
 
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
@@ -462,12 +468,12 @@ gtk_media_controller_on_player_state_changed(GMprisMediaPlayer* player, gpointer
     state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING)
       gtk_media_controller_set_player(self, player); 
 
-  printf("gtk_media_controller_on_player_state_changed exited\n");
+  g_debug("gtk_media_controller_on_player_state_changed exited\n");
 }
 
 
 static void mpris_on_player_added(GMprisMediaManager* manager, GMprisMediaPlayer* player, gpointer user_data){
-  printf("mpris_on_player_added entered\n");
+  g_debug("mpris_on_player_added entered\n");
 
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
@@ -505,7 +511,7 @@ static void mpris_on_player_added(GMprisMediaManager* manager, GMprisMediaPlayer
 
       // If player should be ignored, return early without adding it
       if (should_ignore) {
-        printf("mpris_on_player_added exited early (player ignored)\n");
+        g_warning("mpris_on_player_added exited early (player ignored)\n");
         return;
       }
     }
@@ -522,21 +528,21 @@ static void mpris_on_player_added(GMprisMediaManager* manager, GMprisMediaPlayer
   gtk_media_controller_player_add(self, player);
   gtk_media_controller_update(self);
 
-  printf("mpris_on_player_added exited\n");
+  g_debug("mpris_on_player_added exited\n");
 }
 
 static void mpris_on_player_removed(GMprisMediaManager* manager, GMprisMediaPlayer* player, gpointer user_data){
-  printf("mpris_on_player_removed entered\n");
+  g_debug("mpris_on_player_removed entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   gtk_media_controller_player_remove(self,player);
   gtk_media_controller_update(self);
-  printf("mpris_on_player_removed exited\n");
+  g_debug("mpris_on_player_removed exited\n");
 }
 
 static void
 gtk_media_controller_constructed(GObject* object)
 {
-  printf("gtk_media_controller_constructed\n");
+  g_debug("gtk_media_controller_constructed\n");
   GtkMediaController *self = GTK_MEDIA_CONTROLLER(object);
 
   self->media_manager = g_mpris_media_manager_new();
@@ -547,7 +553,7 @@ gtk_media_controller_constructed(GObject* object)
 
   g_mpris_media_manager_start(self->media_manager);
 
-  printf("gtk_media_controller_constructed fnished\n");
+  g_debug("gtk_media_controller_constructed fnished\n");
 }
 
 static void
@@ -590,7 +596,7 @@ gtk_media_controller_class_init(GtkMediaControllerClass * klass)
 static void
 gtk_media_controller_init(GtkMediaController * self)
 {
-  printf("Initializing player\n");
+  g_info("Initializing player\n");
   self->media_players = NULL;
   self->current_player = NULL;
 }
@@ -616,34 +622,37 @@ gtk_media_controller_on_player_bp(GtkLabel* player, GdkEventButton* event, gpoin
     gtk_media_controller_select_next_player(self, self->current_player);
     gtk_media_controller_update(self);
 
-    printf("Left mouse click on player detected\n");
+    g_debug("Left mouse click on player detected\n");
   }
 }
 
 static void 
 gtk_media_controller_on_prev_click(GtkButton* btn, gpointer user_data) {
-  printf("gtk_media_controller_on_prev_click entered\n");
+  g_debug("gtk_media_controller_on_prev_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
 
   g_mpris_media_player_previous(self->current_player);
 
   gtk_media_controller_reset_title_scroll(self, FALSE);
-}
+  g_debug("gtk_media_controller_on_prev_click exited\n");
+ }
 
 static void 
 gtk_media_controller_on_play_click(GtkButton* btn, gpointer user_data) {
-  printf("gtk_media_controller_on_play_click entered\n");
+  g_debug("gtk_media_controller_on_play_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   g_mpris_media_player_play_pause(self->current_player);
-}
+  g_debug("gtk_media_controller_on_play_click exited\n");
+ }
 
 static void 
 gtk_media_controller_on_next_click(GtkButton* btn, gpointer user_data) {
-  printf("gtk_media_controller_on_next_click entered\n");
+  g_debug("gtk_media_controller_on_next_click entered\n");
   GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
   g_mpris_media_player_next(self->current_player);
   gtk_media_controller_reset_title_scroll(self, FALSE);
-}
+  g_debug("gtk_media_controller_on_next_click exited\n");
+ }
 
 static gboolean 
 gtk_media_controller_on_draw_progress(GtkWidget* widget, cairo_t* cr, gpointer user_data){
@@ -727,62 +736,60 @@ gtk_media_controller_title_scroll(gpointer user_data){
 
 gboolean
 gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip* tooltip, gpointer user_data){
-  printf("gtk_media_controller_on_query_tooltip entered\n");
+  g_debug("gtk_media_controller_on_query_tooltip entered\n");
   
-  //GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
-  //GError * err = NULL;
+  GtkMediaController* self = GTK_MEDIA_CONTROLLER(user_data);
+  GError* err = NULL;
 
-  /*if(self->current_player){
-    gchar* art_url = playerctl_player_print_metadata_prop(self->current_player, "mpris:artUrl", &err);
-    if(err != NULL) return FALSE;
+  if(self->current_player){
+    gchar* art_url = NULL;
+    g_object_get(G_OBJECT(self->current_player), "arturl", & art_url, NULL);
 
-    printf("Album art url = %s\n", art_url);
+    g_debug("Album art url = %s\n", art_url);
 
+    GdkPixbuf* pixbuf = NULL;
     if (g_str_has_prefix(art_url, "file://")) {
-      gint width, height, image_width, image_height;
-      GdkPixbuf* pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
-      
-      g_free(art_url);
-      
+      pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
       if(err != NULL){
-        printf("Error reading album art image: %s", err->message);
+        g_error("Error reading album art image: %s", err->message);
+        g_free(art_url);
         return FALSE;
       }
+    }
+    g_free(art_url);
 
-      if(pixbuf){
-        image_width = gdk_pixbuf_get_width(pixbuf);
-        image_height = gdk_pixbuf_get_height(pixbuf);
+    if(pixbuf){
+      gint width, height, image_width, image_height;
 
-        gdouble ratio = (gdouble)image_height/(gdouble)image_width;
+      image_width = gdk_pixbuf_get_width(pixbuf);
+      image_height = gdk_pixbuf_get_height(pixbuf);
 
-        width = self->config->tooltip_image_width;
-        height = width*ratio;
+      gdouble ratio = (gdouble)image_height/(gdouble)image_width;
 
-        GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
-        if (pixbuf_scaled) {
-          gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
-          gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
-          g_object_unref(pixbuf_scaled);
-        } else {
-          printf("Pixbuf can not be read.\n");
-          return FALSE;
-        }
-        g_object_unref(pixbuf);
+      width = self->config->tooltip_image_width;
+      height = width*ratio;
+
+      GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
+      if (pixbuf_scaled) {
+        gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
+        gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
+        g_object_unref(pixbuf_scaled);
       } else {
+        g_error("Pixbuf can not be read.\n");
         return FALSE;
       }
+      g_object_unref(pixbuf);
     } else {
-      g_free(art_url);
       return FALSE;
     }
-  }*/
+  }
 
   return TRUE;
 }
 
 GtkMediaController*
 gtk_media_controller_new(MediaPlayerModConfig* config){
-  printf("gtk_media_controller_new entered\n");
+  g_debug("gtk_media_controller_new entered\n");
 
   if(!config) return NULL;
 

@@ -36,6 +36,7 @@ struct _GMprisMediaPlayer
   GMprisMediaPlayerState state;
   gchar *title;
   gchar *artist;
+  gchar *arturl;
 
   gint64 last_known_position;
   gint64 position;
@@ -62,6 +63,7 @@ enum
   G_MPRIS_MEDIA_PLAYER_PROP_IFACE,
   G_MPRIS_MEDIA_PLAYER_PROP_STATE,
   G_MPRIS_MEDIA_PLAYER_PROP_ARTIST,
+  G_MPRIS_MEDIA_PLAYER_PROP_ARTURL,
   G_MPRIS_MEDIA_PLAYER_PROP_TITLE,
   G_MPRIS_MEDIA_PLAYER_PROP_POSITION,
   G_MPRIS_MEDIA_PLAYER_PROP_LENGTH,
@@ -128,6 +130,9 @@ g_mpris_media_player_get_property(GObject * object,
       break;
     case G_MPRIS_MEDIA_PLAYER_PROP_ARTIST:
       g_value_set_string(value, self->artist);
+      break;
+    case G_MPRIS_MEDIA_PLAYER_PROP_ARTURL:
+      g_value_set_string(value, self->arturl);
       break;
     case G_MPRIS_MEDIA_PLAYER_PROP_POSITION:
       g_value_set_int64(value, self->position);
@@ -255,6 +260,7 @@ g_mpris_media_player_finalize(GObject * object)
 
   g_clear_pointer(&self->title, g_free);
   g_clear_pointer(&self->artist, g_free);
+  g_clear_pointer(&self->arturl, g_free);
 
   g_clear_object(&self->conn);
   g_clear_pointer((gpointer*)&self->iface, g_free);
@@ -319,6 +325,13 @@ g_mpris_media_player_class_init(GMprisMediaPlayerClass * klass)
     g_param_spec_string("artist",
                         "Artist", 
                         "Current track artist",
+                        "", // default empty string
+                        G_PARAM_READABLE);
+
+  g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_ARTURL] =
+    g_param_spec_string("arturl",
+                        "Art URL", 
+                        "Current track art url",
                         "", // default empty string
                         G_PARAM_READABLE);
 
@@ -525,6 +538,7 @@ g_mpris_media_player_update_info(GMprisMediaPlayer* self){
       if (g_strcmp0(self->title, new_title) != 0) {
         g_free(self->title);
         self->title = g_strdup(new_title ? new_title : "");
+
         g_object_notify_by_pspec(G_OBJECT(self), 
           g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_TITLE]);
       }
@@ -532,12 +546,29 @@ g_mpris_media_player_update_info(GMprisMediaPlayer* self){
       if (g_strcmp0(self->artist, new_artist) != 0) {
         g_free(self->artist);
         self->artist = g_strdup(new_artist ? new_artist : "");
+
         g_object_notify_by_pspec(G_OBJECT(self), 
           g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_ARTIST]);
       }
 
       if (v_title) g_variant_unref(v_title);
       if (v_artist) g_variant_unref(v_artist);
+
+      GVariant *v_arturl = g_variant_lookup_value(metadata, "mpris:artUrl", G_VARIANT_TYPE_STRING);
+      if (v_arturl) {
+        const char *art_url = g_variant_get_string(v_arturl, NULL);
+
+        if (g_strcmp0(self->arturl, art_url) != 0) {
+          g_free(self->arturl);
+          self->arturl = g_strdup(art_url ? art_url : "");
+
+          g_object_notify_by_pspec(G_OBJECT(self), 
+              g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_ARTURL]);
+
+        }
+
+        g_variant_unref(v_arturl);
+      }
 
       g_signal_emit(self, 
             g_mpris_media_player_signals[G_MPRIS_MEDIA_PLAYER_SIGNAL_META_CHANGED], 
@@ -773,6 +804,7 @@ g_mpris_media_player_init(GMprisMediaPlayer * self)
   self->state = G_MPRIS_MEDIA_PLAYER_STATE_IDLE;
   self->title = g_strdup("");
   self->artist = g_strdup("");
+  self->arturl = g_strdup("");
   self->position = 0;
 
   self->can_go_next = FALSE;
@@ -827,7 +859,6 @@ on_command_complete(GObject *source_object,
   
   if (ret) g_variant_unref(ret);
 }
-
 
 static void g_mpris_media_player_send_command_async(GMprisMediaPlayer* self, 
                                             const char* method_name) {
