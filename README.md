@@ -29,7 +29,6 @@ cp build/waybar_mediaplayer.so /home/<user>/.config/waybar/scripts
 
 ## Dependencies
 
-* playerctl
 * Latest waybar version ( Arch: use the git version )
 
 ## Load the module
@@ -57,7 +56,8 @@ Edit your waybar config:
 		"btn-play-icon": "",
 		"btn-pause-icon": "",
 		"btn-prev-icon": "",
-		"btn-next-icon": ""
+		"btn-next-icon": "",
+		"ignored-players": "playerctl"
 	}
 }
 ```
