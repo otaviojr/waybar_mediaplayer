@@ -835,7 +835,18 @@ g_mpris_media_player_compare(const void* a, const void* b) {
 
 gboolean 
 g_is_mpris_media_player_available(GMprisMediaPlayer* self) {
-  return self->state != G_MPRIS_MEDIA_PLAYER_STATE_IDLE && self->can_control && self->can_play;
+  gchar* artist = g_strstrip(g_strdup(self->artist));
+  gchar* title = g_strstrip(g_strdup(self->title));
+
+  gboolean ret =  self->state != G_MPRIS_MEDIA_PLAYER_STATE_IDLE && 
+          self->can_control && 
+          self->can_play && 
+          (strlen(artist) > 0 || strlen(title) > 0);
+
+  g_free(artist);
+  g_free(title);
+
+  return ret;
 }
 
 gboolean 

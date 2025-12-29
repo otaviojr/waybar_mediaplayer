@@ -52,15 +52,9 @@ struct _GtkMediaController
   GtkWindow* tooltip_window;
   GtkImage* tooltip_image;
 
-  /* new MPRIS functions */
   GMprisMediaManager* media_manager;
   GMprisMediaPlayer* current_player;
   GList* media_players;
-
-  /* old playerctl functions */
-  //PlayerctlPlayerManager* player_manager;
-  //PlayerctlPlayer* current_player;
-  //GList* media_players;
 
   GtkMediaControllerState state;
 };
@@ -248,6 +242,9 @@ gtk_media_controller_update(GtkMediaController* self) {
                     "artist", &artist,
                     "title", &title,
                     NULL); 
+
+      artist = g_strstrip(artist);
+      title = g_strstrip(title);
 
       if((artist && strlen(artist) > 0) || (title && strlen(title) > 0)){
         gint mem_size = 0;
@@ -465,8 +462,10 @@ gtk_media_controller_on_player_state_changed(GMprisMediaPlayer* player, gpointer
   g_object_get(G_OBJECT(player), "state", &state, NULL);
 
   if(g_is_mpris_media_player_available(player) && 
-    state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING)
-      gtk_media_controller_set_player(self, player); 
+    state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING){
+      gtk_media_controller_set_player(self, player);
+      gtk_media_controller_reset_title_scroll(self, FALSE);
+  }
 
   g_debug("gtk_media_controller_on_player_state_changed exited");
 }
@@ -796,7 +795,6 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
                                   "config", config,
                                   "state", GTK_MEDIA_CONTROLLER_STATE_IDLE,
                                   NULL);
-
 
   self->container = GTK_CONTAINER(gtk_box_new(GTK_ORIENTATION_HORIZONTAL,5));
   gtk_widget_set_name(GTK_WIDGET(self->container),"media_player");
