@@ -589,12 +589,13 @@ g_mpris_media_player_update_info(GMprisMediaPlayer* self){
     }
 
     // ---- "Widget output" (replace with GTK label updates etc.) ----
-    g_print("[%-30s] %-7s | %s\n",
+    g_debug("[%-30s] %-7s | %s\n",
             self->iface ? self->iface : "(none)",
             status[0] ? status : "?",
             title_artist[0] ? title_artist : "(no metadata)");
 
     g_free(title_artist);
+
     if (playback) g_variant_unref(playback);
     if (metadata) g_variant_unref(metadata);
   }

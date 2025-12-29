@@ -55,7 +55,7 @@ void*
 wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
   
-  printf("waybar_mediapliayer: init config:\n");
+  g_info("waybar_mediapliayer initialized");
 
   MediaPlayerModConfig* config = g_malloc(sizeof(MediaPlayerModConfig));
   config->scroll_title = TRUE;
@@ -119,7 +119,7 @@ wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config
 
       config->ignored_players = ignored_players;
       } else {
-      printf("Property '%s' ignored\n", config_entries[i].key);
+      g_warning("Property '%s' ignored", config_entries[i].key);
     }
   }
 
@@ -133,13 +133,13 @@ wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config
   gtk_container_add(GTK_CONTAINER(root), GTK_WIDGET(inst->container));
 
   // Return instance object
-  printf("waybar_mediaplayer inst=%p: init success ! (%d total instances)\n", inst, ++instance_count);
+  g_info("waybar_mediaplayer inst=%p: init success ! (%d total instances)\n", inst, ++instance_count);
   return inst;
 }
 
 void 
 wbcffi_deinit(void* instance) {
-  printf("waybar_mediaplayer inst=%p: free memory\n", instance);
+  g_info("waybar_mediaplayer inst=%p: free memory\n", instance);
   free(instance);
 }
 
