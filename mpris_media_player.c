@@ -407,7 +407,7 @@ g_mpris_media_player_class_init(GMprisMediaPlayerClass * klass)
     g_signal_new("meta-changed",
                   G_TYPE_FROM_CLASS(gobject_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-                  0,
+  0,
                   NULL,
                   NULL,
                   NULL,
@@ -423,40 +423,42 @@ on_position_query_complete(GObject *source_object,
                           GAsyncResult *result,
                           gpointer user_data)
 {
-    GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(user_data);
-    GError *error = NULL;
-    GVariant *ret = g_dbus_proxy_call_finish(G_DBUS_PROXY(source_object), result, &error);
-    
-    if (ret && !error) {
-        GVariant *value = NULL;
-        g_variant_get(ret, "(v)", &value);
-        
-        if (value && g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
-            gint64 new_position = g_variant_get_int64(value);
-            
-            g_debug("on_position_query_complete: %ld", new_position);
+  g_return_if_fail(G_IS_MPRIS_MEDIA_PLAYER(user_data));
 
-            if (self->position != new_position) {
-                self->position = new_position;
-                self->last_known_position = new_position;
+  GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(user_data);
+  GError *error = NULL;
+  GVariant *ret = g_dbus_proxy_call_finish(G_DBUS_PROXY(source_object), result, &error);
+  
+  if (ret && !error) {
+      GVariant *value = NULL;
+      g_variant_get(ret, "(v)", &value);
+      
+      if (value && g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
+          gint64 new_position = g_variant_get_int64(value);
+          
+          g_debug("on_position_query_complete: %ld", new_position);
 
-                if(self->state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING && self->position_timer) {
-                  g_timer_reset(self->position_timer);
-                }
-                
-                g_object_notify_by_pspec(G_OBJECT(self), 
-                    g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
-            }
-        }
-        
-        if (value) g_variant_unref(value);
-        g_variant_unref(ret);
-    }
-    
-    if (error) {
-        g_warning("Failed to query position: %s", error->message);
-        g_error_free(error);
-    }
+          if (self->position != new_position) {
+              self->position = new_position;
+              self->last_known_position = new_position;
+
+              if(self->state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING && self->position_timer) {
+                g_timer_reset(self->position_timer);
+              }
+              
+              g_object_notify_by_pspec(G_OBJECT(self), 
+                  g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
+          }
+      }
+      
+      if (value) g_variant_unref(value);
+      g_variant_unref(ret);
+  }
+  
+  if (error) {
+      g_warning("Failed to query position: %s", error->message);
+      g_error_free(error);
+  }
 }
 
 
