@@ -48,7 +48,9 @@ struct _GMprisMediaPlayer
   gboolean can_control;
 
   guint position_timer_id;
-  GTimer *position_timer; 
+  GTimer *position_timer;
+
+  GCancellable * position_query_cancellable;
 };
 
 struct _GMprisMediaPlayerClass
@@ -265,6 +267,11 @@ g_mpris_media_player_finalize(GObject * object)
   g_clear_object(&self->conn);
   g_clear_pointer((gpointer*)&self->iface, g_free);
 
+  if (self->position_query_cancellable) {
+    g_cancellable_cancel(self->position_query_cancellable);
+    g_clear_object(&self->position_query_cancellable);
+  }
+
   G_OBJECT_CLASS
       (g_mpris_media_player_parent_class)->finalize(object);
 
@@ -445,19 +452,25 @@ on_position_query_complete(GObject *source_object,
               if(self->state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING && self->position_timer) {
                 g_timer_reset(self->position_timer);
               }
-              
+
               g_object_notify_by_pspec(G_OBJECT(self), 
                   g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
           }
       }
-      
+
       if (value) g_variant_unref(value);
       g_variant_unref(ret);
   }
-  
+
   if (error) {
-      g_warning("Failed to query position: %s", error->message);
+    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+      g_debug("Position query was cancelled");
       g_error_free(error);
+      return;
+    }
+
+    g_warning("Failed to query position: %s", error->message);
+    g_error_free(error);
   }
 }
 
@@ -471,7 +484,7 @@ query_position_async(GMprisMediaPlayer *self)
                      g_variant_new("(ss)", IFACE_PLAYER, "Position"),
                      G_DBUS_CALL_FLAGS_NONE,
                      1000, // 1 second timeout
-                     NULL,
+                     self->position_query_cancellable,
                      on_position_query_complete,
                      self);
 }
@@ -814,6 +827,8 @@ g_mpris_media_player_init(GMprisMediaPlayer * self)
   self->can_go_previous = FALSE;
   self->can_control = FALSE;
   self->can_play = FALSE;
+
+  self->position_query_cancellable = g_cancellable_new();
 
   g_debug("g_mpris_media_player_init exited");
 }
