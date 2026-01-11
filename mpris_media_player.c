@@ -239,6 +239,11 @@ g_mpris_media_player_finalize(GObject * object)
 
   GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(object);
 
+  if (self->position_query_cancellable) {
+    g_cancellable_cancel(self->position_query_cancellable);
+    g_clear_object(&self->position_query_cancellable);
+  }
+
   stop_position_timer(self);
   if (self->position_timer) {
     g_timer_destroy(self->position_timer);
@@ -266,11 +271,6 @@ g_mpris_media_player_finalize(GObject * object)
 
   g_clear_object(&self->conn);
   g_clear_pointer((gpointer*)&self->iface, g_free);
-
-  if (self->position_query_cancellable) {
-    g_cancellable_cancel(self->position_query_cancellable);
-    g_clear_object(&self->position_query_cancellable);
-  }
 
   G_OBJECT_CLASS
       (g_mpris_media_player_parent_class)->finalize(object);
@@ -430,48 +430,51 @@ on_position_query_complete(GObject *source_object,
                           GAsyncResult *result,
                           gpointer user_data)
 {
-  g_return_if_fail(G_IS_MPRIS_MEDIA_PLAYER(user_data));
+    GError *error = NULL;
+    GVariant *ret = g_dbus_proxy_call_finish(G_DBUS_PROXY(source_object), result, &error);
 
-  GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(user_data);
-  GError *error = NULL;
-  GVariant *ret = g_dbus_proxy_call_finish(G_DBUS_PROXY(source_object), result, &error);
-  
-  if (ret && !error) {
-      GVariant *value = NULL;
-      g_variant_get(ret, "(v)", &value);
-      
-      if (value && g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
-          gint64 new_position = g_variant_get_int64(value);
-          
-          g_debug("on_position_query_complete: %ld", new_position);
+    if (ret && !error) {
+        GVariant *value = NULL;
+        g_variant_get(ret, "(v)", &value);
+        
+        if (value && g_variant_is_of_type(value, G_VARIANT_TYPE_INT64)) {
+            gint64 new_position = g_variant_get_int64(value);
+            
+            g_debug("on_position_query_complete: %ld", new_position);
+            if(G_IS_MPRIS_MEDIA_PLAYER(user_data)){
+                GMprisMediaPlayer *self = G_MPRIS_MEDIA_PLAYER(user_data);
+ 
+                if (self->position != new_position) {
+                    self->position = new_position;
+                    self->last_known_position = new_position;
 
-          if (self->position != new_position) {
-              self->position = new_position;
-              self->last_known_position = new_position;
+                    if(self->state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING && self->position_timer) {
+                      g_timer_reset(self->position_timer);
+                    }
 
-              if(self->state == G_MPRIS_MEDIA_PLAYER_STATE_PLAYING && self->position_timer) {
-                g_timer_reset(self->position_timer);
-              }
+                    g_object_notify_by_pspec(G_OBJECT(self), 
+                      g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
+                }
+            }
+        }
 
-              g_object_notify_by_pspec(G_OBJECT(self), 
-                  g_mpris_media_player_param_specs[G_MPRIS_MEDIA_PLAYER_PROP_POSITION]);
-          }
-      }
-
-      if (value) g_variant_unref(value);
-      g_variant_unref(ret);
-  }
-
-  if (error) {
-    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-      g_debug("Position query was cancelled");
-      g_error_free(error);
-      return;
+        if (value) g_variant_unref(value);
+        g_variant_unref(ret);
     }
 
-    g_warning("Failed to query position: %s", error->message);
-    g_error_free(error);
-  }
+    if (error) {
+      if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+        g_debug("Position query was cancelled");
+        g_error_free(error);
+        g_object_unref(user_data);
+        return;
+      }
+
+      g_warning("Failed to query position: %s", error->message);
+      g_error_free(error);
+    }
+
+    g_object_unref(user_data);
 }
 
 
@@ -486,7 +489,7 @@ query_position_async(GMprisMediaPlayer *self)
                      1000, // 1 second timeout
                      self->position_query_cancellable,
                      on_position_query_complete,
-                     self);
+                     g_object_ref(self));
 }
 
 static void
