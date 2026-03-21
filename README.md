@@ -66,11 +66,11 @@ Edit your waybar config:
 
 Edit your style.css
 ```css
-#mediaplayer {
+#media_player {
     color: red;
 }
 
-#mediaplayer .button {
+#media_player .button {
     color: white;
     background: transparent;
     border-width: 0px;
@@ -81,20 +81,20 @@ Edit your style.css
     text-shadow: none;
 }
 
-#mediaplayer .play-button{
+#media_player .play-button{
 }
 
-#mediaplayer .prev-button {
+#media_player .prev-button {
 }
 
-#mediaplayer .next-button {
+#media_player .next-button {
 }
 
-#mediaplayer .players {
+#media_player .players {
      color: white;
 }
 
-#mediaplayer .title {
+#media_player .title {
      color: white;
 }
 ```
