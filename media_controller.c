@@ -741,42 +741,45 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
 
   if(self->current_player){
     gchar* art_url = NULL;
-    g_object_get(G_OBJECT(self->current_player), "arturl", & art_url, NULL);
+    g_object_get(G_OBJECT(self->current_player), "arturl", &art_url, NULL);
 
-    g_debug("Album art url = %s", art_url);
-
-    GdkPixbuf* pixbuf = NULL;
-    if (g_str_has_prefix(art_url, "file://")) {
-      pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
-      if(err != NULL){
-        g_error("Error reading album art image: %s", err->message);
-        g_free(art_url);
-        return FALSE;
+    if(art_url != NULL){
+      g_debug("Album art url = %s", art_url);
+      GdkPixbuf* pixbuf = NULL;
+      if (g_str_has_prefix(art_url, "file://")) {
+        pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
+        if(err != NULL){
+          g_error("Error reading album art image: %s", err->message);
+          g_free(art_url);
+          return FALSE;
+        }
       }
-    }
-    g_free(art_url);
+      g_free(art_url);
 
-    if(pixbuf){
-      gint width, height, image_width, image_height;
+      if(pixbuf){
+        gint width, height, image_width, image_height;
 
-      image_width = gdk_pixbuf_get_width(pixbuf);
-      image_height = gdk_pixbuf_get_height(pixbuf);
+        image_width = gdk_pixbuf_get_width(pixbuf);
+        image_height = gdk_pixbuf_get_height(pixbuf);
 
-      gdouble ratio = (gdouble)image_height/(gdouble)image_width;
+        gdouble ratio = (gdouble)image_height/(gdouble)image_width;
 
-      width = self->config->tooltip_image_width;
-      height = width*ratio;
+        width = self->config->tooltip_image_width;
+        height = width*ratio;
 
-      GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
-      if (pixbuf_scaled) {
-        gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
-        gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
-        g_object_unref(pixbuf_scaled);
+        GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
+        if (pixbuf_scaled) {
+          gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
+          gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
+          g_object_unref(pixbuf_scaled);
+        } else {
+          g_error("Pixbuf can not be read.\n");
+          return FALSE;
+        }
+        g_object_unref(pixbuf);
       } else {
-        g_error("Pixbuf can not be read.\n");
         return FALSE;
       }
-      g_object_unref(pixbuf);
     } else {
       return FALSE;
     }
