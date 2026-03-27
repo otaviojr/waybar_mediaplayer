@@ -285,7 +285,7 @@ static void collect_all_players(GMprisMediaManager *self) {
       &err);
 
   if (!ret) {
-    g_error("ListNames failed: %s\n", err ? err->message : "unknown");
+    g_critical("ListNames failed: %s\n", err ? err->message : "unknown");
     g_clear_error(&err);
     return;
   }
@@ -313,7 +313,7 @@ g_mpris_media_manager_start(GMprisMediaManager* self){
     GError *err = NULL;
     self->conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &err);
     if (!self->conn) {
-      g_error("failed to connect to session bus: %s", err ? err->message : "unknown");
+      g_critical("failed to connect to session bus: %s", err ? err->message : "unknown");
       g_clear_error(&err);
       return;
     }
