@@ -778,7 +778,7 @@ g_mpris_media_player_new(GDBusConnection* conn, const char* iface){
       &err);
 
   if (!self->player_proxy) {
-    g_error("Failed to create player proxy for %s: %s\n",
+    g_critical("Failed to create player proxy for %s: %s\n",
                self->iface, err ? err->message : "unknown");
     g_clear_error(&err);
   }

@@ -754,8 +754,9 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
       if (g_str_has_prefix(art_url, "file://")) {
         pixbuf = gdk_pixbuf_new_from_file(art_url + strlen("file://"), &err);
         if(err != NULL){
-          g_error("Error reading album art image: %s", err->message);
+          g_critical("Error reading album art image: %s", err->message);
           g_free(art_url);
+          g_error_free(err);
           return FALSE;
         }
       }
@@ -793,7 +794,7 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
 
           g_object_unref(pixbuf_scaled);
         } else {
-          g_error("Pixbuf can not be read.\n");
+          g_critical("Pixbuf can not be read.\n");
           return FALSE;
         }
         g_object_unref(pixbuf);
