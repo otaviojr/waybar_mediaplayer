@@ -49,9 +49,6 @@ struct _GtkMediaController
   GtkButton* btn_next;
   GtkButton* btn_play;
 
-  GtkWindow* tooltip_window;
-  GtkImage* tooltip_image;
-
   GMprisMediaManager* media_manager;
   GMprisMediaPlayer* current_player;
   GList* media_players;
@@ -732,6 +729,14 @@ gtk_media_controller_title_scroll(gpointer user_data){
   return TRUE;
 }
 
+static void
+on_tooltip_destroy(gpointer data, GObject *where_the_widget_was)
+{
+  GtkWidget *tooltip_image = GTK_WIDGET(data);
+  g_debug("Tooltip destroyed, cleaning up image widget");
+  gtk_widget_destroy(tooltip_image);
+}
+
 gboolean
 gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip* tooltip, gpointer user_data){
   g_debug("gtk_media_controller_on_query_tooltip entered");
@@ -769,8 +774,23 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
 
         GdkPixbuf* pixbuf_scaled = gdk_pixbuf_scale_simple(pixbuf, width, height, GDK_INTERP_BILINEAR);
         if (pixbuf_scaled) {
-          gtk_image_set_from_pixbuf(GTK_IMAGE(self->tooltip_image), pixbuf_scaled);
-          gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), width, height);
+          image_width = gdk_pixbuf_get_width(pixbuf_scaled);
+          image_height = gdk_pixbuf_get_height(pixbuf_scaled);
+
+          GtkImage* tooltip_image = GTK_IMAGE(gtk_image_new());
+          gtk_image_set_from_pixbuf(GTK_IMAGE(tooltip_image), pixbuf_scaled);
+          gtk_widget_set_size_request(GTK_WIDGET(tooltip_image), image_width, image_height);
+          gtk_widget_show(GTK_WIDGET(tooltip_image));
+
+          // Add CSS class for styling
+          GtkStyleContext* tooltip_context = gtk_widget_get_style_context(GTK_WIDGET(tooltip_image));
+          gtk_style_context_add_class(tooltip_context, "media-tooltip");
+          gtk_widget_set_name(GTK_WIDGET(tooltip_image), "media-tooltip-image");
+
+          gtk_tooltip_set_custom(tooltip, GTK_WIDGET(tooltip_image));
+
+          g_object_weak_ref(G_OBJECT(tooltip_image), on_tooltip_destroy, tooltip_image);
+
           g_object_unref(pixbuf_scaled);
         } else {
           g_error("Pixbuf can not be read.\n");
@@ -806,19 +826,8 @@ gtk_media_controller_new(MediaPlayerModConfig* config){
   g_object_ref(self->container);
 
   if(config->tooltip){
+    gtk_widget_set_has_tooltip(GTK_WIDGET(self->container), TRUE);
     g_signal_connect(self->container,"query-tooltip", G_CALLBACK(gtk_media_controller_on_query_tooltip), self);
-
-    self->tooltip_window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_POPUP));
-    gtk_widget_set_tooltip_window(GTK_WIDGET(self->container), GTK_WINDOW(self->tooltip_window));
-
-    GtkBox* tooltip_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL,5));
-    gtk_container_add(GTK_CONTAINER(self->tooltip_window), GTK_WIDGET(tooltip_container));
-
-    self->tooltip_image = GTK_IMAGE(gtk_image_new());
-    gtk_container_add(GTK_CONTAINER(tooltip_container), GTK_WIDGET(self->tooltip_image));
-    gtk_widget_set_size_request(GTK_WIDGET(self->tooltip_image), config->tooltip_image_width, config->tooltip_image_height);
-
-    gtk_widget_show_all(GTK_WIDGET(tooltip_container));
   }
 
   GtkEventBox* player_event = GTK_EVENT_BOX(gtk_event_box_new());
