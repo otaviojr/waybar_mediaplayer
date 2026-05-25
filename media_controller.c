@@ -729,14 +729,6 @@ gtk_media_controller_title_scroll(gpointer user_data){
   return TRUE;
 }
 
-static void
-on_tooltip_destroy(gpointer data, GObject *where_the_widget_was)
-{
-  GtkWidget *tooltip_image = GTK_WIDGET(data);
-  g_debug("Tooltip destroyed, cleaning up image widget");
-  gtk_widget_destroy(tooltip_image);
-}
-
 gboolean
 gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip* tooltip, gpointer user_data){
   g_debug("gtk_media_controller_on_query_tooltip entered");
@@ -789,8 +781,6 @@ gtk_media_controller_on_query_tooltip(GtkWidget* widget, gint x, gint y, gboolea
           gtk_widget_set_name(GTK_WIDGET(tooltip_image), "media-tooltip-image");
 
           gtk_tooltip_set_custom(tooltip, GTK_WIDGET(tooltip_image));
-
-          g_object_weak_ref(G_OBJECT(tooltip_image), on_tooltip_destroy, tooltip_image);
 
           g_object_unref(pixbuf_scaled);
         } else {
